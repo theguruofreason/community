@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: "../../.env" })
 
+export const LOGIN_TABLE = process.env.LOGIN_TABLE
+
 export const SQL_CONFIG: config = {
     user: process.env.DB_USER,
     password: process.env.DB_PWD,

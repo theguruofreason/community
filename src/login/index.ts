@@ -8,5 +8,5 @@ router.get("/", (_, res: Response) => {
     res.sendFile(path.join(__dirname, "index.html"))
 })
 .post("/", (req: Request, res: Response) => {
-
+    return;
 })
