@@ -5,12 +5,12 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "pnpm i && npm run clean && npx tsc && npm run copy-files",
+    "build": "pnpm i && pnpm run clean && npx tsc && pnpm run copy-files",
     "copy-files": "copyfiles -u 1 src/**/*.html dist/",
     "clean": "rimraf ./dist",
-    "start": "npm run build && ts-node src/index.ts",
+    "start": "pnpm run build && ts-node src/index.ts",
     "rawstart": "ts-node src/index.ts",
-    "dev": "npm run build && nodemon src/index.ts"
+    "dev": "pnpm run build && nodemon src/index.ts"
   },
   "keywords": [],
   "author": "Iden Busia",
