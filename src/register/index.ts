@@ -1,17 +1,12 @@
 import bcrypt from "bcrypt";
 import Router, { Response, Request } from "express";
 import path from "path";
-import { getLoginDb } from "../helpers";
+import { getLoginDb, DB_FAILURE, SALT_ROUNDS } from "../helpers";
 import dotenv from 'dotenv';
 export const router = Router();
-const SALT_ROUNDS = 10;
 
 dotenv.config();
 const LOGIN_TABLE = process.env.LOGIN_TABLE;
-const DB_FAILURE : RegisterResult = {
-    status: 500,
-    message: `db failure...`
-}
 router.get("/", (_, res: Response) => {
     res.sendFile(path.join(__dirname, "index.html"))
 })

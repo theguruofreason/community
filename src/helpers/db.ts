@@ -1,6 +1,10 @@
 import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 
+export const DB_FAILURE = {
+    status: 500,
+    message: `db failure...`
+}
 export async function getLoginDb() : Promise<Database | undefined> {
     try {
         const result = open({
