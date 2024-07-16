@@ -1,15 +1,17 @@
+import bcrypt from "bcrypt";
 import Router, { Response, Request } from "express";
 import path from "path";
 import { getLoginDb } from "../helpers";
 import dotenv from 'dotenv';
 export const router = Router();
+const SALT_ROUNDS = 10;
 
 dotenv.config();
 const LOGIN_TABLE = process.env.LOGIN_TABLE;
-const DB_FAILURE =  {
-            status: 500,
-            message: `db failure...`
-    }
+const DB_FAILURE : RegisterResult = {
+    status: 500,
+    message: `db failure...`
+}
 router.get("/", (_, res: Response) => {
     res.sendFile(path.join(__dirname, "index.html"))
 })
@@ -28,10 +30,12 @@ type RegisterResult = {
 
 async function register(uname: string, pass: string, email: string) : Promise<RegisterResult> {
     const db = await getLoginDb();
-    if (!db) { return {
-        status: 500,
-        message: "Failed to load login db"
-    }; }
+    if (!db) {
+        return {
+            status: 500,
+            message: "Failed to load login db"
+        };
+    }
     try {
         const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
         const result = await db.get(stmt, {
@@ -47,19 +51,31 @@ async function register(uname: string, pass: string, email: string) : Promise<Re
         console.log(e);
         return DB_FAILURE;
     }
-        const insertStmt = `INSERT INTO ${LOGIN_TABLE} (uname, email, password) VALUES (:uname, :email, :password)`;
-        try {
-            db.run(insertStmt, {
-                ':uname': uname,
-                ':email': email,
-                ':password': pass
-            });
-        } catch (e) {
-            console.log(e);
-            return DB_FAILURE;
+    try {
+        bcrypt.hash(pass, SALT_ROUNDS, function(err, hash) {
+            if (err) {
+                throw err;
+            }
+            const insertStmt = `INSERT INTO ${LOGIN_TABLE} (uname, email, password) VALUES (:uname, :email, :password)`;
+            try {
+                db.run(insertStmt, {
+                    ':uname': uname,
+                    ':email': email,
+                    ':password': hash
+                });
+            } catch (e) {
+                console.log(e);
+                throw DB_FAILURE;
+            }
+        })
+    } catch (e) {
+        return (e == DB_FAILURE) ? DB_FAILURE : {
+            status: 500,
+            message: (e as Error).message
         }
-        return {
-            status: 200,
-            message: `User ${uname} registered!`
-        }
+    }
+    return {
+        status: 200,
+        message: `User ${uname} registered!`
+    }
 }
