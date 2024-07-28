@@ -1,9 +1,8 @@
 import express, { Express, Request, Response } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import { router } from "./routes"
 
-dotenv.config();
+import pino from 'pino-http';
 
 const app: Express = express();
 const port = process.env.PORT || 3000;
@@ -14,6 +13,9 @@ let corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({extended: true}))
+if (process.env.PINO_LOG_HTTP) {
+    app.use(pino());
+}
 app.use('/', router);
 
 app.listen(port, () => {

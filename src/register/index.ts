@@ -2,10 +2,8 @@ import bcrypt from "bcrypt";
 import Router, { Response, Request } from "express";
 import path from "path";
 import { getLoginDb, DB_FAILURE, SALT_ROUNDS } from "../helpers";
-import dotenv from 'dotenv';
 export const router = Router();
 
-dotenv.config();
 const LOGIN_TABLE = process.env.LOGIN_TABLE;
 router.get("/", (_, res: Response) => {
     res.sendFile(path.join(__dirname, "index.html"))

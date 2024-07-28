@@ -1,9 +1,8 @@
 import Router, { Response, Request } from "express";
 import path from "path";
-import dotenv from 'dotenv';
 import { getLoginDb, DB_FAILURE, SALT_ROUNDS } from "../helpers";
 import bcrypt from 'bcrypt';
-dotenv.config();
+const log = require('pino')();
 const LOGIN_TABLE = process.env.LOGIN_TABLE;
 export const router = Router();
 
@@ -18,9 +17,11 @@ router.get("/", (_, res: Response) => {
     const uname: string = req.body.uname;
     const pass: string = req.body.pass;
     if (!uname || !pass) {
+        req.log.info(`Invalid request to login: ${JSON.stringify(req.body)}`);
         res.status(400).send("Username and password required.");
         return;
     }
+    log.info(`Successful login: ${uname}`)
     const result: LoginResult = await login(uname, pass);
     res.status(result.status).send(result.message);
 })
