@@ -1,7 +1,8 @@
 import bcrypt from "bcrypt";
 import Router, { Response, Request } from "express";
 import path from "path";
-import { getLoginDb, DB_FAILURE, SALT_ROUNDS } from "../helpers";
+import { getLoginDb, DB_FAILURE } from "../db";
+import { SALT_ROUNDS } from "../configs";
 export const router = Router();
 
 const LOGIN_TABLE = process.env.LOGIN_TABLE;
