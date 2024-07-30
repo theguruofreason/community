@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import Router, { Response, Request } from "express";
 import path from "path";
 import { getLoginDb, DB_FAILURE } from "../db";
-import { SALT_ROUNDS } from "../helpers/configs";
+import { NEO4J_DRIVER_NAME, SALT_ROUNDS } from "../helpers/configs";
 
 const { LOGIN_TABLE } = process.env;
 export const router = Router();
@@ -12,6 +12,7 @@ router
     res.sendFile(path.join(__dirname, "index.html"));
   })
   .post("/", async (req: Request, res: Response) => {
+    const neo4jDriver = req.app.get(NEO4J_DRIVER_NAME);
     const email: string = req.body.email || "";
     const uname: string = req.body.uname;
     const pass: string = req.body.pass;

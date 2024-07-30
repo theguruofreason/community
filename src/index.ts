@@ -1,10 +1,11 @@
-import express, { Express } from "express";
-import cors from "cors";
-import { router } from "./routes";
-import pino from "pino-http";
-import { pino as logger } from "pino";
-const log = logger();
 import { Neo4JDriver } from "./db";
+import { pino as logger } from "pino";
+import { router } from "./routes";
+import cors from "cors";
+import express, { Express } from "express";
+import pino from "pino-http";
+import { NEO4J_DRIVER_NAME } from "./helpers/configs";
+const log = logger();
 const {
   NEO4J_PW,
   NEO4J_URI,
@@ -55,7 +56,7 @@ if (!Neo4JInitSuccess) {
   log.error("Failed to connect to Neo4J database.");
   process.exit(1);
 }
-app.locals.neo4j = localNeo4JDriver;
+app.set(NEO4J_DRIVER_NAME, localNeo4JDriver);
 
 app.use("/", router);
 
