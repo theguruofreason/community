@@ -2,8 +2,9 @@ import Router, { Response, Request } from "express";
 import path from "path";
 import { getLoginDb } from "../db";
 import bcrypt from 'bcrypt';
-const log = require('pino')();
-const LOGIN_TABLE = process.env.LOGIN_TABLE;
+import { pino as logger } from 'pino';
+const log = logger();
+const { LOGIN_TABLE } = process.env;
 export const router = Router();
 
 type LoginResult = {

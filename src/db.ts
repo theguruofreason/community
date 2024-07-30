@@ -1,8 +1,9 @@
 import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 import neo4j, { Driver, Neo4jError, Session } from "neo4j-driver";
+import pino from "pino";
 
-const log = require('pino')();
+const log = pino();
 
 export const DB_FAILURE = {
     status: 500,
