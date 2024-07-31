@@ -2,8 +2,12 @@ import bcrypt from "bcrypt";
 import Router, { Response, Request } from "express";
 import path from "path";
 import { getLoginDb, DB_FAILURE } from "../db";
-import { NEO4J_DRIVER_NAME, SALT_ROUNDS } from "../helpers/configs";
+import { SALT_ROUNDS } from "../helpers/configs";
 import { Driver } from "neo4j-driver";
+import { Statement } from "sqlite";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { LOGIN_TABLE } = process.env;
 export const router = Router();
@@ -13,7 +17,7 @@ router
         res.sendFile(path.join(__dirname, "index.html"));
     })
     .post("/", async (req: Request, res: Response) => {
-        const neo4jDriver: Driver = req.app.get(NEO4J_DRIVER_NAME);
+        const neo4jDriver: Driver = req.n4jDriver;
         const email: string = req.body.email || "";
         const uname: string = req.body.uname;
         const pass: string = req.body.pass;
@@ -46,8 +50,8 @@ async function register(
     email: string,
     n4jDriver: Driver
 ): Promise<RegisterResult> {
-    const db = await getLoginDb();
-    if (!db) {
+    const loginDB = await getLoginDb();
+    if (!loginDB) {
         return {
             status: 500,
             message: "Failed to load login db",
@@ -55,7 +59,7 @@ async function register(
     }
     try {
         const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-        const result = await db.get(stmt, {
+        const result = await loginDB.get(stmt, {
             ":uname": uname,
         });
         if (result) {
@@ -73,20 +77,26 @@ async function register(
             if (err) {
                 throw err;
             }
-            const insertStmt = `INSERT INTO ${LOGIN_TABLE} (uname, email, password) VALUES (:uname, :email, :password)`;
+            const sqliteStatement: Statement = await loginDB.prepare(
+                `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (:uname, :email, :password)`
+            );
             try {
-                db.run(insertStmt, {
-                    ":uname": uname,
-                    ":email": email,
-                    ":password": hash,
-                });
-                const n4jResult = await n4jDriver.executeQuery(
-                    "MERGE (p:Person {uname: $uname, email: $email})",
-                    {
-                        uname: uname,
-                        email: email,
-                    }
-                );
+                const [sqliteResult, n4jResult] = await Promise.all([
+                    sqliteStatement.get({
+                        ":uname": uname,
+                        ":email": email,
+                        ":password": hash,
+                    }),
+                    n4jDriver.executeQuery(
+                        "MERGE (p:Person {uname: $uname, email: $email})",
+                        {
+                            uname: uname,
+                            email: email,
+                        }
+                    ),
+                ]);
+                // if (sqliteResult.changes) { }
+                console.log("foo");
             } catch (e) {
                 console.log(e);
                 throw DB_FAILURE;

@@ -6,66 +6,68 @@ import pino from "pino";
 const log = pino();
 
 export const DB_FAILURE = {
-  status: 500,
-  message: `db failure...`,
+    status: 500,
+    message: `db failure...`,
 };
 
 export async function getLoginDb(): Promise<Database | undefined> {
-  try {
-    const result = open({
-      filename: "sqlite/login.db",
-      driver: sqlite3.cached.Database,
-    });
-    return result;
-  } catch (e) {
-    console.log(`Failed to start sqlite database: ${e}`);
-  }
+    try {
+        const result = open({
+            filename: "sqlite/login.db",
+            driver: sqlite3.cached.Database,
+        });
+        return result;
+    } catch (e) {
+        console.log(`Failed to start sqlite database: ${e}`);
+    }
 }
 
 export class Neo4JDriver {
-  private driver: Driver | null = null;
+    private driver: Driver | null = null;
 
-  constructor(
-    readonly uri: string,
-    readonly uname: string,
-    private pw: string
-  ) {}
+    constructor(
+        readonly uri: string,
+        readonly uname: string,
+        private pw: string
+    ) {}
 
-  async initializeDriver(): Promise<boolean> {
-    try {
-      this.driver = neo4j.driver(
-        this.uri,
-        neo4j.auth.basic(this.uname, this.pw)
-      );
-      const serverInfo = await this.driver.getServerInfo();
-      log.info("Neo4J connection established");
-      log.info(serverInfo);
-    } catch (err) {
-      if (typeof err === "string") {
-        log.error(`Neo4J connection error: ${err}`);
-      } else if (err instanceof Neo4jError) {
-        log.error(`Neo4J connection error: ${err}\nCause:${err?.cause}`);
-      } else {
-        log.error(`Neo4J connection error: ${JSON.stringify(err)}`);
-      }
-      return false;
+    async initializeDriver(): Promise<boolean> {
+        try {
+            this.driver = neo4j.driver(
+                this.uri,
+                neo4j.auth.basic(this.uname, this.pw)
+            );
+            const serverInfo = await this.driver.getServerInfo();
+            log.info("Neo4J connection established");
+            log.info(serverInfo);
+        } catch (err) {
+            if (typeof err === "string") {
+                log.error(`Neo4J connection error: ${err}`);
+            } else if (err instanceof Neo4jError) {
+                log.error(
+                    `Neo4J connection error: ${err}\nCause:${err?.cause}`
+                );
+            } else {
+                log.error(`Neo4J connection error: ${JSON.stringify(err)}`);
+            }
+            return false;
+        }
+        return true;
     }
-    return true;
-  }
 
-  async getSession(): Promise<Session> {
-    if (!this.driver) {
-      log.error(
-        `Attempted to get session before driver initialized: ${JSON.stringify(
-          this
-        )}`
-      );
-      throw new Error("Failed to get session.");
+    async getSession(): Promise<Session> {
+        if (!this.driver) {
+            log.error(
+                `Attempted to get session before driver initialized: ${JSON.stringify(
+                    this
+                )}`
+            );
+            throw new Error("Failed to get session.");
+        }
+        return this.driver.session();
     }
-    return this.driver.session();
-  }
 
-  getDriver(): Driver | null {
-    return this.driver;
-  }
+    getDriver(): Driver | null {
+        return this.driver;
+    }
 }
