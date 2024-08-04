@@ -95,8 +95,6 @@ async function register(
                         }
                     ),
                 ]);
-                // if (sqliteResult.changes) { }
-                console.log("foo");
             } catch (e) {
                 console.log(e);
                 throw DB_FAILURE;
