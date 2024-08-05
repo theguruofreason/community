@@ -1,9 +1,21 @@
-import { Neo4JDriver } from "./db";
+/*
+Copyright 2024, James Iden Busia
+
+This file is part of Community.
+
+Community is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+Community is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with Community. If not, see <https://www.gnu.org/licenses/>. 
+*/
+import { Neo4JDriver } from "db";
 import { Logger, pino as pinoLogger } from "pino";
-import { router } from "./routes";
+import { router } from "routes";
 import cors from "cors";
 import express, { Express } from "express";
 import pino from "pino-http";
+import "reflect-metadata";
 const log: Logger = pinoLogger();
 const {
     NEO4J_PW,

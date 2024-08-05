@@ -1,7 +1,8 @@
 import { Router, Request, Response } from "express";
 import path from "path";
-import { router as login } from "../login";
-import { router as register } from "../register";
+import { router as login } from "login";
+import { router as register } from "register";
+import { router as connect } from "../relationships";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -13,4 +14,5 @@ router
         res.sendFile(path.join(__dirname, "index.html"));
     })
     .use("/login", login)
-    .use("/register", register);
+    .use("/register", register)
+    .use("/connect", connect);
