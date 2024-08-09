@@ -27,7 +27,16 @@ const {
     PINO_LOG_HTTP,
 } = process.env;
 
+
+const app: Express = express();
+const port = PORT || 3000;
+const corsOptions = {
+    origin: ORIGIN,
+};
+
 // Initialize Neo4J connection
+let retries = 0;
+let Neo4JInitSuccess = false;
 if (!NEO4J_URI || !NEO4J_UNAME || !NEO4J_PW) {
     log.error(
         `Missing Neo4J parameters: ${JSON.stringify({
@@ -38,30 +47,27 @@ if (!NEO4J_URI || !NEO4J_UNAME || !NEO4J_PW) {
     );
     throw new Error("Missing Neo4J parameter");
 }
-const localNeo4JDriver: Neo4JDriver = new Neo4JDriver(
-    NEO4J_URI,
-    NEO4J_UNAME,
-    NEO4J_PW
-);
-let retries = 0;
-let Neo4JInitSuccess = false;
-while (retries < Number(NEO4J_CONNECTION_MAX_RETRIES)) {
-    if (await localNeo4JDriver.initializeDriver()) {
-        Neo4JInitSuccess = true;
-        break;
+let localNeo4JDriver: Neo4JDriver;
+while (retries < +NEO4J_CONNECTION_MAX_RETRIES) {
+    try {
+        localNeo4JDriver = new Neo4JDriver(
+            NEO4J_URI,
+            NEO4J_UNAME,
+            NEO4J_PW
+        );
+        let serverInfo = await localNeo4JDriver.getServerInfo();
+        log.info("Local Neo4J connection established!");
+        log.info(serverInfo);
+    } catch (err) {
+        log.error(err)
+        log.warn(`Neo4J connection failed...\n${+NEO4J_CONNECTION_MAX_RETRIES - retries} retries remaining...`)
+        retries += 1;
     }
-    retries += 1;
 }
 if (!Neo4JInitSuccess) {
     log.error("Failed to connect to Neo4J database.");
     process.exit(1);
 }
-
-const app: Express = express();
-const port = PORT || 3000;
-const corsOptions = {
-    origin: ORIGIN,
-};
 
 app.use((req, _, next) => {
     try {

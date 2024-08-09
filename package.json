@@ -17,17 +17,23 @@
     "author": "Iden Busia",
     "license": "GPL-3.0",
     "dependencies": {
+        "@apollo/server": "^4.10.5",
+        "@neo4j/graphql": "^5.5.2",
         "bcrypt": "^5.1.1",
         "cookie-parser": "^1.4.6",
         "copyfiles": "^2.4.1",
         "cors": "^2.8.5",
         "express": "^4.19.2",
         "express-validator": "^7.1.0",
+        "graphql": "^16.9.0",
+        "graphql-scalars": "^1.23.0",
         "neo4j-driver": "^5.23.0",
         "pino": "^9.3.1",
         "pino-http": "^10.2.0",
+        "reflect-metadata": "^0.2.2",
         "sqlite": "^5.1.1",
-        "sqlite3": "^5.1.7"
+        "sqlite3": "^5.1.7",
+        "type-graphql": "2.0.0-rc.2"
     },
     "devDependencies": {
         "@types/bcrypt": "^5.0.2",
