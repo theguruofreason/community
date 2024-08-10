@@ -18,6 +18,7 @@
     "license": "GPL-3.0",
     "dependencies": {
         "@apollo/server": "^4.10.5",
+        "@graphql-tools/graphql-file-loader": "^8.0.1",
         "@neo4j/graphql": "^5.5.2",
         "bcrypt": "^5.1.1",
         "cookie-parser": "^1.4.6",
@@ -27,6 +28,7 @@
         "express-validator": "^7.1.0",
         "graphql": "^16.9.0",
         "graphql-scalars": "^1.23.0",
+        "graphql-tools": "^9.0.1",
         "neo4j-driver": "^5.23.0",
         "pino": "^9.3.1",
         "pino-http": "^10.2.0",
