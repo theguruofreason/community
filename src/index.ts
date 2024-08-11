@@ -9,14 +9,14 @@ Community is distributed in the hope that it will be useful, but WITHOUT ANY WAR
 
 You should have received a copy of the GNU General Public License along with Community. If not, see <https://www.gnu.org/licenses/>. 
 */
-import { Neo4JDriver } from "db";
-import { Logger, pino as pinoLogger } from "pino";
+import { Neo4jDriver, Neo4jMiddleware } from "db";
 import { router } from "routes";
 import cors from "cors";
 import express, { Express } from "express";
 import pino from "pino-http";
-import "reflect-metadata";
-const log: Logger = pinoLogger();
+import { ErrorHandler } from "errors";
+const pinoHttp = pino();
+const log = pinoHttp.logger;
 const {
     NEO4J_PW,
     NEO4J_URI,
@@ -24,7 +24,6 @@ const {
     NEO4J_CONNECTION_MAX_RETRIES,
     PORT,
     ORIGIN,
-    PINO_LOG_HTTP,
 } = process.env;
 
 
@@ -47,15 +46,16 @@ if (!NEO4J_URI || !NEO4J_UNAME || !NEO4J_PW) {
     );
     throw new Error("Missing Neo4J parameter");
 }
-let localNeo4JDriver: Neo4JDriver;
-while (retries < +NEO4J_CONNECTION_MAX_RETRIES) {
+let localNeo4JDriver: Neo4jDriver;
+while (retries < +NEO4J_CONNECTION_MAX_RETRIES && !Neo4JInitSuccess) {
     try {
-        localNeo4JDriver = new Neo4JDriver(
+        localNeo4JDriver = new Neo4jDriver(
             NEO4J_URI,
             NEO4J_UNAME,
             NEO4J_PW
         );
         let serverInfo = await localNeo4JDriver.getServerInfo();
+        Neo4JInitSuccess = true;
         log.info("Local Neo4J connection established!");
         log.info(serverInfo);
     } catch (err) {
@@ -69,24 +69,15 @@ if (!Neo4JInitSuccess) {
     process.exit(1);
 }
 
-app.use((req, _, next) => {
-    try {
-        req.logger = log;
-        req.n4jDriver = localNeo4JDriver.getDriver()!;
-    } catch (e) {
-        log.error(e);
-        process.exit(1);
-    }
-    next();
-});
+app.use(Neo4jMiddleware(localNeo4JDriver!));
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-if (PINO_LOG_HTTP == "true") {
-    app.use(pino());
-}
+app.use(pino());
 
 app.use("/", router);
+
+app.use(ErrorHandler)
 
 app.listen(port, () => {
     console.log(`[server]: Server is running at ${ORIGIN}:${port}`);

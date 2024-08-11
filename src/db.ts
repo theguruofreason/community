@@ -2,6 +2,7 @@ import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 import neo4j, { Driver, Neo4jError, ServerInfo, Session } from "neo4j-driver";
 import pino from "pino";
+import { NextFunction, Request, Response } from "express";
 const {
     LOGIN_DB_URI
 } = process.env;
@@ -9,19 +10,14 @@ const {
 const log = pino();
 
 export async function getLoginDb(): Promise<Database | undefined> {
-    try {
-        const result = open({
-            filename: LOGIN_DB_URI,
-            driver: sqlite3.cached.Database,
-        });
-        return result;
-    } catch (e) {
-        console.log(`Failed to start sqlite database: ${e}`);
-        log.error(e);
-    }
+    const result = open({
+        filename: LOGIN_DB_URI,
+        driver: sqlite3.cached.Database,
+    });
+    return result;
 }
 
-export class Neo4JDriver {
+export class Neo4jDriver {
     private driver: Driver;
 
     constructor(
@@ -47,3 +43,15 @@ export class Neo4JDriver {
         return this.driver;
     }
 }
+
+export function Neo4jMiddleware(neo4jDriver: Neo4jDriver) {
+    return (req: Request, _: Response, next: NextFunction) => {
+        try {
+            req.n4jDriver = neo4jDriver.getDriver()!;
+        } catch (e) {
+            log.error(e);
+            process.exit(1);
+        }
+        next();
+    }
+};

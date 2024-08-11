@@ -10,13 +10,14 @@ Community is distributed in the hope that it will be useful, but WITHOUT ANY WAR
 You should have received a copy of the GNU General Public License along with Community. If not, see <https://www.gnu.org/licenses/>. 
 */
 import bcrypt from "bcrypt";
-import Router, { Response, Request } from "express";
+import Router, { Response, Request, NextFunction } from "express";
 import path from "path";
-import { getLoginDb, DB_FAILURE } from "db";
+import { getLoginDb } from "db";
 import { SALT_ROUNDS } from "../helpers/configs";
 import { Driver } from "neo4j-driver";
 import { Statement } from "sqlite";
 import { fileURLToPath } from "url";
+import { ErrorWithStatus } from "errors";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,138 +28,106 @@ router
     .get("/", (_, res: Response) => {
         res.sendFile(path.join(__dirname, "index.html"));
     })
-    .post("/", async (req: Request, res: Response) => {
+    .post("/", async (req: Request, res: Response, next: NextFunction) => {
         const neo4jDriver: Driver = req.n4jDriver;
         const email: string = req.body.email || "";
         const uname: string = req.body.uname;
         const pass: string = req.body.pass;
         if (!uname || !pass) {
+            req.log.info(req, "Failed login.");
             res.status(400).send("Username and password required.");
             return;
         }
-        const result: RegisterResult = await register(
-            uname,
-            pass,
-            email,
-            neo4jDriver
-        );
-        res.status(result.status).send(result.message);
+        try {
+            await register(
+                uname,
+                pass,
+                email,
+                neo4jDriver
+            );
+            res.sendStatus(200);
+        } catch (e: any) {
+            next(e)
+        }
     })
-    .post("/u", async (req: Request, res: Response) => {
+    .post("/u", async (req: Request, res: Response, next: NextFunction) => {
         const uname: string = req.body.uname;
-        const result: RegisterResult = await unregister(uname);
-        res.status(result.status).send(result.message);
+        try {
+            await unregister(uname);
+        } catch (e: any) {
+            next(e);
+        }
+        res.sendStatus(200);
     });
-
-type RegisterResult = {
-    status: number;
-    message: string;
-};
 
 async function register(
     uname: string,
     pass: string,
     email: string,
     n4jDriver: Driver
-): Promise<RegisterResult> {
+): Promise<void> {
     const loginDB = await getLoginDb();
     if (!loginDB) {
-        return {
-            status: 500,
-            message: "Failed to load login db",
-        };
+        throw new Error("Failed to load login db");
     }
-    try {
-        const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-        const result = await loginDB.get(stmt, {
-            ":uname": uname,
-        });
-        if (result) {
-            return {
-                status: 400,
-                message: `Username ${uname} already registered...`,
-            };
+
+    // Check if user already registered
+    const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
+    const result = await loginDB.get(stmt, {
+        ":uname": uname,
+    });
+    if (result) {
+        throw new ErrorWithStatus(
+            400,
+            `uname ${uname} already registered.`
+        );
+    }
+
+    // Register user info with login DB and Neo4j DB
+    bcrypt.hash(pass, SALT_ROUNDS, async function (err, hash) {
+        if (err) {
+            throw err;
         }
-    } catch (e) {
-        console.log(e);
-        return DB_FAILURE;
-    }
-    try {
-        bcrypt.hash(pass, SALT_ROUNDS, async function (err, hash) {
-            if (err) {
-                throw err;
-            }
-            const sqliteStatement: Statement = await loginDB.prepare(
-                `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (:uname, :email, :password)`
-            );
-            try {
-                const [sqliteResult, n4jResult] = await Promise.all([
-                    sqliteStatement.get({
-                        ":uname": uname,
-                        ":email": email,
-                        ":password": hash,
-                    }),
-                    n4jDriver.executeQuery(
-                        "MERGE (p:Person {uname: $uname, email: $email})",
-                        {
-                            uname: uname,
-                            email: email,
-                        }
-                    ),
-                ]);
-            } catch (e) {
-                console.log(e);
-                throw DB_FAILURE;
-            }
-        });
-    } catch (e) {
-        return e == DB_FAILURE
-            ? DB_FAILURE
-            : {
-                  status: 500,
-                  message: (e as Error).message,
-              };
-    }
-    return {
-        status: 200,
-        message: `User ${uname} registered!`,
-    };
+        const sqliteStatement: Statement = await loginDB.prepare(
+            `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (:uname, :email, :password)`
+        );
+        const [sqliteResult, n4jResult] = await Promise.all([
+            sqliteStatement.get({
+                ":uname": uname,
+                ":email": email,
+                ":password": hash,
+            }),
+            n4jDriver.executeQuery(
+                "MERGE (p:Person {uname: $uname, email: $email})",
+                {
+                    uname: uname,
+                    email: email,
+                }
+            ),
+        ]);
+    });
 }
 
-async function unregister(uname: string): Promise<RegisterResult> {
+async function unregister(uname: string): Promise<void> {
     const db = await getLoginDb();
     if (!db) {
-        return {
-            status: 500,
-            message: "Failed to load login db",
-        };
+        throw new Error("Failed to load login db")
     }
-    try {
+    
+    // Check if user is registered
+    {
         const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
         const result = await db.get(stmt, {
             ":uname": uname,
         });
         if (!result) {
-            return {
-                status: 400,
-                message: `Username ${uname} not registered...`,
-            };
+            throw new ErrorWithStatus(400, `uname ${uname} not registered.`)
         }
-    } catch (e) {
-        console.log(e);
-        return DB_FAILURE;
     }
-    try {
-        const stmt = `DELETE FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-        db.run(stmt, {
-            ":uname": uname,
-        });
-    } catch (e) {
-        console.log(e);
-        return DB_FAILURE;
-    }
-    return {
-        status: 200,
-        message: `User ${uname} unregistered.`,
-    };
+
+    // Delete user info in DB
+    const stmt = `DELETE FROM ${LOGIN_TABLE} WHERE uname=:uname`;
+    await db.run(stmt, {
+        ":uname": uname,
+    });
 }

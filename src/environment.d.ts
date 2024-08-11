@@ -22,14 +22,12 @@ declare global {
             NEO4J_UNAME: string;
             NEO4J_URI: string;
             ORIGIN: string;
-            PINO_LOG_HTTP?: string;
             PINO_LOG_LEVEL: string;
             PORT?: string;
         }
     }
     namespace Express {
         export interface Request {
-            logger: Logger;
             n4jDriver: Driver;
         }
     }
