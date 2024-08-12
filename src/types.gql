@@ -10,7 +10,8 @@ type Person implements Entity {
 }
 
 type Relationship @relationshipProperties {
-    type: RelationshipType 
+    type: RelationshipType,
+    descriptor: string
 }
 
 enum RelationshipType {

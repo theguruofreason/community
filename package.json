@@ -10,7 +10,7 @@
         "copy-files": "copyfiles -u 1 src/**/*.html dist/",
         "clean": "rm -r ./dist",
         "start": "pnpm run build && tsx --env-file=.env src/index.ts",
-        "rawstart": "ts-node --esm src/index.ts",
+        "rawstart": "tsx --env-file=.env src/index.ts",
         "dev": "pnpm run build && nodemon --env-file=.env src/index.ts"
     },
     "keywords": [],

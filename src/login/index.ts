@@ -37,16 +37,19 @@ router
             res.sendStatus(400);
             return;
         }
-        try {
-            await login(uname, pass);
-        } catch (e) {
+        const login_failure = await login(uname, pass).catch((e: any) => {
             next(e)
+        });
+        if (login_failure instanceof ErrorWithStatus) {
+            req.log.info(login_failure);
+            res.status(login_failure.status).send(login_failure.message);
+        } else {
+            req.log.info(`Successful login!`);
+            res.sendStatus(200);
         }
-        req.log.info(`Successful login!`);
-        res.sendStatus(200);
     });
 
-async function login(uname: string, pass: string): Promise<void> {
+async function login(uname: string, pass: string): Promise<void | ErrorWithStatus> {
     const db = await getLoginDb();
     if (!db) {
         throw new Error("Failed to load login db");
@@ -56,14 +59,14 @@ async function login(uname: string, pass: string): Promise<void> {
         ":uname": uname,
     });
     if (!result) {
-        throw new ErrorWithStatus(
-            400,
+        return new ErrorWithStatus(
+            401,
             `Username ${uname} not registered...`,
         );
     }
     if (!bcrypt.compareSync(pass, result.password)) {
-        throw new ErrorWithStatus(
-            400,
+        return new ErrorWithStatus(
+            401,
             `Incorrect password.`
         )
     }

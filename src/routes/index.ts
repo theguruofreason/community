@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import path from "path";
 import { router as login } from "login";
 import { router as register } from "register";
-import { router as connect } from "../relationships";
+import { router as rel } from "relationships";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -15,4 +15,4 @@ router
     })
     .use("/login", login)
     .use("/register", register)
-    .use("/connect", connect);
+    .use("/connect", rel);

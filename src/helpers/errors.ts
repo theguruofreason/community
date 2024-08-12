@@ -10,7 +10,12 @@ export class ErrorWithStatus {
     }
 }
 
-export const ErrorHandler = (err: Error | ErrorWithStatus, req: Request, res: Response, next: NextFunction) => {
+export const ErrorHandler = (err: Error | ErrorWithStatus, req: Request, res: Response, next: NextFunction): void => {
     req.log.error(err);
-    next(err);
+    if (err instanceof ErrorWithStatus) {
+        res.status(err.status);
+    } else {
+        res.status(500);
+    }
+    res.send(err.message);
 }
