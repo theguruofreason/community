@@ -16,14 +16,8 @@ import bcrypt from "bcrypt";
 const { LOGIN_TABLE } = process.env;
 export const router = Router();
 import { fileURLToPath } from "url";
-import { ErrorWithStatus } from "errors";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-type LoginResult = {
-    status: number;
-    message: string;
-};
 
 router
     .get("/", (_, res: Response) => {
@@ -33,23 +27,21 @@ router
         const uname: string = req.body.uname;
         const pass: string = req.body.pass;
         if (!uname || !pass) {
-            req.log.info(`Invalid request to login`);
-            res.sendStatus(400);
+            next({
+                status: 400,
+                message: `uname and pass required`
+            });
             return;
         }
-        const login_failure = await login(uname, pass).catch((e: any) => {
-            next(e)
-        });
-        if (login_failure instanceof ErrorWithStatus) {
-            req.log.info(login_failure);
-            res.status(login_failure.status).send(login_failure.message);
-        } else {
+        await login(uname, pass).then(() => {
             req.log.info(`Successful login!`);
             res.sendStatus(200);
-        }
+        }).catch((e: any) => {
+            next(e)
+        });
     });
 
-async function login(uname: string, pass: string): Promise<void | ErrorWithStatus> {
+async function login(uname: string, pass: string): Promise<void> {
     const db = await getLoginDb();
     if (!db) {
         throw new Error("Failed to load login db");
@@ -59,15 +51,15 @@ async function login(uname: string, pass: string): Promise<void | ErrorWithStatu
         ":uname": uname,
     });
     if (!result) {
-        return new ErrorWithStatus(
-            401,
-            `Username ${uname} not registered...`,
-        );
+        throw {
+            status: 401,
+            message: `Username ${uname} not registered...`,
+        };
     }
     if (!bcrypt.compareSync(pass, result.password)) {
-        return new ErrorWithStatus(
-            401,
-            `Incorrect password.`
-        )
+        throw {
+            status: 401,
+            message: `Incorrect password.`
+        }; 
     }
 }

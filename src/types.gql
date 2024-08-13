@@ -1,7 +1,7 @@
 interface Entity {
     id: ID!
     name: String!
-    relations: [Entity!]! @relationship(type: "Relationship", properties: "Relationship")
+    relations: [Entity!]! @relationship(type: RelationshipType, properties: "Relationship")
 }
 
 type Person implements Entity {

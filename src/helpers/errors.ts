@@ -1,18 +1,12 @@
 import { NextFunction, Request, Response } from "express";
 
-export class ErrorWithStatus {
-    status: number;
-    message: string;
-
-    constructor(status: number, message: string) {
-        this.status = status;
-        this.message = message;
-    }
+export interface IErrorWithStatus extends Error {
+    readonly status: number;
 }
 
-export const ErrorHandler = (err: Error | ErrorWithStatus, req: Request, res: Response, next: NextFunction): void => {
-    req.log.error(err);
-    if (err instanceof ErrorWithStatus) {
+export const ErrorHandler = (err: Error | IErrorWithStatus, req: Request, res: Response, next: NextFunction): void => {
+    req.log.error(err, err.message);
+    if ('status' in err) {
         res.status(err.status);
     } else {
         res.status(500);

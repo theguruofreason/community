@@ -17,7 +17,6 @@ import { SALT_ROUNDS } from "../helpers/configs";
 import { Driver } from "neo4j-driver";
 import { Statement } from "sqlite";
 import { fileURLToPath } from "url";
-import { ErrorWithStatus } from "errors";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,43 +33,38 @@ router
         const uname: string = req.body.uname;
         const pass: string = req.body.pass;
         if (!uname || !pass) {
-            req.log.info(req, "Failed login.");
-            res.status(400).send("Username and password required.");
-            return;
+            throw {
+                status: 400,
+                message: "Username and password required."
+            };
         }
-        const register_failure = await register(
+        register(
             uname,
             pass,
             email,
             neo4jDriver
-        ).catch((e: any) => {
+        ).then(() => {
+            res.sendStatus(200);
+        }).catch((e: any) => {
             next(e);
         });
-        if (register_failure instanceof ErrorWithStatus) {
-            req.log.info(register_failure);
-            res.status(register_failure.status).send(register_failure.message);
-        } else {
-            res.sendStatus(200);
-        }
     })
     .post("/u", async (req: Request, res: Response, next: NextFunction) => {
         const uname: string = req.body.uname;
         const pass: string = req.body.pass;
         if (!uname || !pass) {
-            next(new ErrorWithStatus(
-                400,
-                "uname and pass required"
-            ))
+            next({
+                status: 400,
+                message: "uname and pass required"
+            });
+            return;
         }
-        const unregister_failure: void | ErrorWithStatus = await unregister(uname, pass, req.n4jDriver).catch((e: any) => {
-            next(e);
-        })
-        if (unregister_failure instanceof ErrorWithStatus) {
-            req.log.info(unregister_failure);
-            res.status(unregister_failure.status).send(unregister_failure.message);
-        } else {
+        unregister(uname, pass, req.n4jDriver).then(() => {
             res.sendStatus(200);
-        }
+        }).catch((e: any) => {
+            next(e);
+            return;
+        })
     });
 
 async function register(
@@ -78,7 +72,7 @@ async function register(
     pass: string,
     email: string,
     n4jDriver: Driver
-): Promise<void | ErrorWithStatus> {
+): Promise<void> {
     const loginDB = await getLoginDb();
     if (!loginDB) {
         throw new Error("Failed to load login db");
@@ -90,10 +84,10 @@ async function register(
         ":uname": uname,
     });
     if (result) {
-        return new ErrorWithStatus(
-            400,
-            `uname ${uname} already registered.`
-        );
+        throw {
+            status: 400,
+            message: `uname ${uname} already registered.`
+        };
     }
 
     // Register user info with login DB and Neo4j DB
@@ -102,7 +96,7 @@ async function register(
     const sqliteStatement: Statement = await loginDB.prepare(
         `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (:uname, :email, :password)`
     );
-    const [sqliteResult, n4jResult] = await Promise.all([
+    await Promise.all([
         sqliteStatement.get({
             ":uname": uname,
             ":email": email,
@@ -118,7 +112,7 @@ async function register(
     ]);
 }
 
-async function unregister(uname: string, pass: string, n4jDriver: Driver): Promise<void | ErrorWithStatus> {
+async function unregister(uname: string, pass: string, n4jDriver: Driver): Promise<void> {
     const db = await getLoginDb();
     if (!db) {
         throw new Error("Failed to load login db")
@@ -133,10 +127,16 @@ async function unregister(uname: string, pass: string, n4jDriver: Driver): Promi
             ":uname": uname,
         });
         if (!result) {
-            return new ErrorWithStatus(400, `uname ${uname} not registered.`);
+            throw {
+                status: 400,
+                message: `uname ${uname} not registered.`
+            };
         }
         if (result.pw != hash) {
-            return new ErrorWithStatus(401, `Bad password for ${uname}.`);
+            throw {
+                status: 401,
+                message: `Bad password for ${uname}.`
+            };
         }
     }
 
