@@ -28,7 +28,7 @@ const {
 
 
 const app: Express = express();
-const port = PORT || 3000;
+const port = +(PORT ?? 3000);
 const corsOptions = {
     origin: ORIGIN,
 };

@@ -15,7 +15,7 @@ async function startNeo4JGraphQL(neo4JDriver: Neo4jDriver): Promise<void> {
         schema: await neoSchema.getSchema(),
     })
     const { url } = await startStandaloneServer(server, {
-        listen: { port: +APOLLO_PORT | 4000 }
+        listen: { port: +(APOLLO_PORT ?? 4000) }
     })
     console.log(`🚀 Server ready at ${url}`)
 }
