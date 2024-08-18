@@ -61,7 +61,7 @@ while (retries < +NEO4J_CONNECTION_MAX_RETRIES && !Neo4JInitSuccess) {
     } catch (err) {
         log.error(err)
         log.warn(`Neo4J connection failed...\n${+NEO4J_CONNECTION_MAX_RETRIES - retries} retries remaining...`)
-        retries += 1;
+        retries++;
     }
 }
 if (!Neo4JInitSuccess) {

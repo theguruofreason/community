@@ -91,7 +91,7 @@ async function register(
     }
 
     // Register user info with login DB and Neo4j DB
-    const hash = bcrypt.hash(pass, SALT_ROUNDS);
+    const hash = await bcrypt.hash(pass, SALT_ROUNDS);
     
     const sqliteStatement: Statement = await loginDB.prepare(
         `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (:uname, :email, :password)`

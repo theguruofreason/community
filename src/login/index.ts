@@ -16,6 +16,8 @@ import bcrypt from "bcrypt";
 const { LOGIN_TABLE } = process.env;
 export const router = Router();
 import { fileURLToPath } from "url";
+import { generateAccessToken } from "auth";
+import { Database } from "sqlite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,19 +35,29 @@ router
             });
             return;
         }
-        await login(uname, pass).then(() => {
+        try {
+            const db = await getLoginDb();
+            await validateLogin(uname, pass, db);
             req.log.info(`Successful login!`);
-            res.sendStatus(200);
-        }).catch((e: any) => {
-            next(e)
-        });
+            const stmt = `SELECT privileges FROM ${LOGIN_TABLE} WHERE uname=:uname`;
+            const privileges = await db.get(stmt, {
+                ":uname": uname
+            })
+            const jwt: string = generateAccessToken(uname, "user");
+            res.json({
+                token: jwt
+            })
+        } catch (e: any) {
+            next(e);
+        }
+    })
+    .post("/out", async (req: Request, res: Response, next: NextFunction) => {
+        const authHeader: string | undefined = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+
     });
 
-async function login(uname: string, pass: string): Promise<void> {
-    const db = await getLoginDb();
-    if (!db) {
-        throw new Error("Failed to load login db");
-    };
+async function validateLogin(uname: string, pass: string, db: Database): Promise<void> {
     const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
     const result = await db.get(stmt, {
         ":uname": uname,
@@ -56,7 +68,7 @@ async function login(uname: string, pass: string): Promise<void> {
             message: `Username ${uname} not registered...`,
         };
     }
-    if (!bcrypt.compareSync(pass, result.password)) {
+    if (!bcrypt.compareSync(pass, result.pw)) {
         throw {
             status: 401,
             message: `Incorrect password.`

@@ -24,6 +24,9 @@ declare global {
             ORIGIN: string;
             PINO_LOG_LEVEL: string;
             PORT?: string;
+            TOKEN_SECRET: string;
+            TOKEN_MAX_AGE?: string;
+            TOKEN_ISSUER: string;
         }
     }
     namespace Express {

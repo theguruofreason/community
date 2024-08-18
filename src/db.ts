@@ -1,6 +1,6 @@
 import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
-import neo4j, { Driver, Neo4jError, ServerInfo, Session } from "neo4j-driver";
+import neo4j, { Driver, ServerInfo, Session } from "neo4j-driver";
 import pino from "pino";
 import { NextFunction, Request, Response } from "express";
 const {
@@ -9,7 +9,7 @@ const {
 
 const log = pino();
 
-export async function getLoginDb(): Promise<Database | undefined> {
+export function getLoginDb(): Promise<Database> {
     const result = open({
         filename: LOGIN_DB_URI,
         driver: sqlite3.cached.Database,
