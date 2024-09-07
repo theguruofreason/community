@@ -118,8 +118,6 @@ async function unregister(uname: string, pass: string, n4jDriver: Driver): Promi
         throw new Error("Failed to load login db")
     }
 
-    const hash = bcrypt.hash(pass, SALT_ROUNDS);
-
     // Check if user is registered
     {
         const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
@@ -132,7 +130,7 @@ async function unregister(uname: string, pass: string, n4jDriver: Driver): Promi
                 message: `uname ${uname} not registered.`
             };
         }
-        if (result.pw != hash) {
+        if (!(bcrypt.compareSync(pass, result.pw))) {
             throw {
                 status: 401,
                 message: `Bad password for ${uname}.`
@@ -141,11 +139,10 @@ async function unregister(uname: string, pass: string, n4jDriver: Driver): Promi
     }
 
     // Delete user info in DB
-    const stmt = `DELETE FROM ${LOGIN_TABLE} WHERE uname=:uname AND pw=:password`;
+    const stmt = `DELETE FROM ${LOGIN_TABLE} WHERE uname=:uname`;
     await Promise.all([
         db.run(stmt, {
-            ":uname": uname,
-            ":password": hash
+            ":uname": uname
         }),
         n4jDriver.executeQuery(
             `MATCH (p:Person) WHERE p.uname = $uname DETACH DELETE p`,
