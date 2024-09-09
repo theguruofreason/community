@@ -29,19 +29,24 @@ router
     })
     .post("/", async (req: Request, res: Response, next: NextFunction) => {
         const neo4jDriver: Driver = req.n4jDriver;
-        const email: string = req.body.email || "";
-        const uname: string = req.body.uname;
-        const pass: string = req.body.pass;
-        if (!uname || !pass) {
+        const userInfo: UserInfo = {
+            uname: req.body.uname,
+            email: req.body.email,
+            pass: req.body.pass,
+            name: req.body.name,
+            ...(req.body.description && {description: req.body.description}),
+            role: req.body.role || "USER",
+            active: true,
+            creationDateTime: new Date().toISOString(),
+        }
+        if (!userInfo.uname || !userInfo.pass || !userInfo.name) {
             throw {
                 status: 400,
-                message: "Username and password required."
+                message: "Username, name, and password required."
             };
         }
         register(
-            uname,
-            pass,
-            email,
+            userInfo,
             neo4jDriver
         ).then(() => {
             res.sendStatus(200);
@@ -67,10 +72,19 @@ router
         })
     });
 
-async function register(
+type UserInfo = {
     uname: string,
+    email?: string,
     pass: string,
-    email: string,
+    name: string,
+    description?: string,
+    role: number,
+    active: boolean,
+    creationDateTime: string
+}
+
+async function register(
+    userInfo: UserInfo,
     n4jDriver: Driver
 ): Promise<void> {
     const loginDB = await getLoginDb();
@@ -81,33 +95,33 @@ async function register(
     // Check if user already registered
     const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
     const result = await loginDB.get(stmt, {
-        ":uname": uname,
+        ":uname": userInfo.uname,
     });
     if (result) {
         throw {
             status: 400,
-            message: `uname ${uname} already registered.`
+            message: `uname ${userInfo.uname} already registered.`
         };
     }
 
     // Register user info with login DB and Neo4j DB
-    const hash = await bcrypt.hash(pass, SALT_ROUNDS);
+    const hash: string = await bcrypt.hash(userInfo.pass, SALT_ROUNDS);
     
     const sqliteStatement: Statement = await loginDB.prepare(
         `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (:uname, :email, :password)`
     );
+    const userInfoParamString: string = Object.entries(userInfo).map( keyval => {
+        return `${keyval[0]}: $${keyval[0]}`
+    }).join(", ");
     await Promise.all([
         sqliteStatement.get({
-            ":uname": uname,
-            ":email": email,
+            ":uname": userInfo.uname,
+            ":email": userInfo.email,
             ":password": hash,
         }),
         n4jDriver.executeQuery(
-            "MERGE (p:Person {uname: $uname, email: $email})",
-            {
-                uname: uname,
-                email: email,
-            }
+            `MERGE (p:Person {${userInfoParamString}})`,
+            userInfo
         ),
     ]);
 }

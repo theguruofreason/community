@@ -4,13 +4,17 @@ const { TOKEN_SECRET, TOKEN_MAX_AGE , TOKEN_ISSUER } = process.env;
 
 export const router = Router()
 
+interface JWTPayload {
+    uname: string,
+    roles?: number
+};
+
 router
     .post("/", (req: Request, response: Response, next: NextFunction) => {
-        const token = generateAccessToken(req.body.uname);
-        response.json(token);
+
     })
 
-export function generateAccessToken(uname: string, subject?: string) : string {
+export function generateAccessToken(payload: JWTPayload, subject?: string) : string {
     var options: jwt.SignOptions = {
         expiresIn: TOKEN_MAX_AGE ?? '1800s',
         issuer: TOKEN_ISSUER,
@@ -18,18 +22,26 @@ export function generateAccessToken(uname: string, subject?: string) : string {
     if (subject) {
         options.subject = subject;
     }
-    return jwt.sign({ uname: uname }, TOKEN_SECRET, options);
+    return jwt.sign(payload, TOKEN_SECRET, options);
 }
 
-export function requireToken(req: Request, res: Response, options: jwt.VerifyOptions, next: NextFunction) {
+export function requireValidToken(req: Request, res: Response, next: NextFunction) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
+    const options = {
+        maxAge: TOKEN_MAX_AGE ?? '1800s'
+    }
 
     if (token == null) {
         return res.redirect(401, '/login');
     }
 
-    jwt.verify(token, TOKEN_SECRET, options);
+    try {
+        res.locals.token = jwt.verify(token, TOKEN_SECRET, options);
+    } catch (e) {
+        next(e);
+    }
+
 }
 
 export function isTokenValid(authHeader: string | undefined) : boolean {

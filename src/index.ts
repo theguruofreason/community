@@ -15,6 +15,7 @@ import cors from "cors";
 import express, { Express } from "express";
 import pino from "pino-http";
 import { ErrorHandler } from "errors";
+import { startNeo4JGraphQL } from "apollo_server";
 const pinoHttp = pino();
 const log = pinoHttp.logger;
 const {
@@ -58,6 +59,7 @@ while (retries < +NEO4J_CONNECTION_MAX_RETRIES && !Neo4JInitSuccess) {
         Neo4JInitSuccess = true;
         log.info("Local Neo4J connection established!");
         log.info(serverInfo);
+        startNeo4JGraphQL(localNeo4JDriver);
     } catch (err) {
         log.error(err)
         log.warn(`Neo4J connection failed...\n${+NEO4J_CONNECTION_MAX_RETRIES - retries} retries remaining...`)

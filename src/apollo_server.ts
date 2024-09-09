@@ -2,15 +2,15 @@ import { ApolloServer } from '@apollo/server';
 import { startStandaloneServer } from '@apollo/server/standalone';
 import { Neo4jGraphQL } from '@neo4j/graphql';
 import { Neo4jDriver } from 'db';
-import { GraphQLFileLoader } from '@graphql-tools/graphql-file-loader';
+import { readFileSync } from 'fs';
 const { APOLLO_PORT } = process.env;
-
-const GraphQL_Loader = new GraphQLFileLoader();
-const typeDefs = GraphQL_Loader.loadSync("./types.gql", {})[0].rawSDL!;
-
+import { fileURLToPath } from "url";
+import path from "path";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function startNeo4JGraphQL(neo4JDriver: Neo4jDriver): Promise<void> {
-    const neoSchema: Neo4jGraphQL = new Neo4jGraphQL({typeDefs, driver: neo4JDriver.getDriver()})
+    const typeDefs : string = await readFileSync(__dirname + "/types.graphql").toString("utf-8");
+    const neoSchema: Neo4jGraphQL = new Neo4jGraphQL({ typeDefs, driver: neo4JDriver.getDriver()})
     const server = new ApolloServer({
         schema: await neoSchema.getSchema(),
     })
@@ -20,3 +20,5 @@ async function startNeo4JGraphQL(neo4JDriver: Neo4jDriver): Promise<void> {
     })
     console.log(`🚀 Server ready at ${url}`)
 }
+
+export { startNeo4JGraphQL };

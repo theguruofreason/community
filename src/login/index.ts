@@ -39,11 +39,11 @@ router
             const db = await getLoginDb();
             await validateLogin(uname, pass, db);
             req.log.info(`Successful login!`);
-            const stmt = `SELECT privileges FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-            const privileges = await db.get(stmt, {
+            const stmt = `SELECT roles FROM ${LOGIN_TABLE} WHERE uname=:uname`;
+            const roles = await db.get(stmt, {
                 ":uname": uname
             })
-            const jwt: string = generateAccessToken(uname, "user");
+            const jwt: string = generateAccessToken({uname: uname, roles: roles});
             res.json({
                 token: jwt
             })

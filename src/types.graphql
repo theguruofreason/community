@@ -1,0 +1,146 @@
+interface Entity {
+    name: String!
+    creationDateTime: DateTime!
+    active: Boolean!
+    description: String
+}
+
+type Relationship @relationshipProperties {
+    descriptor: String
+}
+
+enum Role {
+    USER
+    MODERATOR
+    ADMIN
+}
+
+type Address {
+    line1: String!
+    country: String!
+    city: String!
+    zip: [Int!]
+}
+
+type ContactInformation {
+    addresses: [Address!]
+    phones: [String!]
+    emails: [String!]
+    socials: [String!]
+}
+
+union Owners = Person | Business | Group
+union GroupOrBusiness = Group | Business
+
+type Person implements Entity {
+    name: String!
+    familyOut: [Person!]! @relationship(type: "FAMILY", properties: "Relationship", direction: OUT)
+    familyIn: [Person!]! @relationship(type: "FAMILY", properties: "Relationship", direction: IN)
+    friendsOut: [Person!]! @relationship(type: "FRIENDS", properties: "Relationship", direction: OUT)
+    friendsIn: [Person!]! @relationship(type: "FRIENDS", properties: "Relationship", direction: IN)
+    things: [Thing!]! @relationship(type: "OWNS", properties: "Relationship", direction: OUT)
+    jobs: [Business!]! @relationship(type: "EMPLOYEE", properties: "Relationship", direction: IN)
+    affiliations: [Group!]! @relationship(type: "AFFILIATED_WITH", properties: "Relationship", direction: OUT)
+    attending: [Event!]! @relationship(type: "ATTENDING", properties: "Relationship", direction: OUT)
+    hosting: [Event!]! @relationship(type: "HOSTING", properties: "Relationship", direction: OUT)
+    creationDateTime: DateTime!
+    active: Boolean!
+    description: String
+    uname: String!
+    contactInformation: ContactInformation
+    posts: [Post!]
+    role: Role!
+}
+
+type Place implements Entity {
+    address: Address!
+    name: String!
+    ownedBy: [Owners!]! @relationship(type: "OWNS", properties: "Relationship", direction: IN)
+    createdBy: Entity!
+    creationDateTime: DateTime!
+    active: Boolean!
+    description: String
+}
+
+type Thing implements Entity {
+    type: [String!]
+    name: String!
+    ownedBy: [Owners!]! @relationship(type: "OWNS", properties: "Relationship", direction: IN)
+    createdBy: Entity!
+    creationDateTime: DateTime!
+    active: Boolean!
+    description: String
+}
+
+type Business implements Entity {
+    description: String
+    contactInformation: ContactInformation
+    name: String!
+    employs: [Person!]! @relationship(type: "EMPLOYEE", properties: "Relationship", direction: OUT)
+    owns: [Thing!]! @relationship(type: "EMPLOYEE", properties: "Relationship", direction: OUT)
+    affiliations: [GroupOrBusiness!]! @relationship(type: "AFFILIATED_WITH", properties: "Relationship", direction: OUT)
+    events: [Event!]! @relationship(type: "HOSTING", properties: "Relationship", direction: OUT)
+    createdBy: Entity!
+    creationDateTime: DateTime!
+    active: Boolean!
+}
+
+type Group implements Entity {
+    posts: [Post]
+    name: String!
+    affiliations: [Entity!]! @relationship(type: "AFFILIATED_WITH", properties: "Relationship", direction: IN)
+    hostingEvents: [Event!]! @relationship(type: "HOSTING", properties: "Relationship", direction: OUT)
+    attendingEvents: [Event!]! @relationship(type: "ATTENDING", properties: "Relationship", direction: OUT)
+    createdBy: Entity!
+    creationDateTime: DateTime!
+    active: Boolean!
+    description: String
+}
+
+type Event implements Entity {
+    occurringOn: [DateTime!]!
+    posts: [Post!]
+    name: String!
+    location: Place!
+    hosts: [Entity!]! @relationship(type: "HOSTING", properties: "Relationship", direction: IN)
+    attendants: [Entity!]! @relationship(type: "ATTENDING", properties: "Relationship", direction: IN)
+    contactInformation: ContactInformation
+    createdBy: Entity!
+    creationDateTime: DateTime!
+    active: Boolean!
+    description: String
+}
+
+type Post {
+    creationDateTime: DateTime!
+    activationDateTime: DateTime
+    deactivationDateTime: DateTime
+    content: [PostContent!]!
+}
+
+type PostText {
+    text: String!
+}
+
+type PostImage {
+    uri: String!
+    alt_description: String
+}
+
+type PostVideo {
+    uri: String!
+    alt_description: String
+    transcript: String
+}
+
+type PostAudio {
+    uri: String!
+    alt_description: String
+    transcript: String
+}
+
+type PostLink {
+    url: String!
+}
+
+union PostContent = PostText | PostImage | PostAudio | PostLink | PostVideo 
