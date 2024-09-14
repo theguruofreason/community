@@ -13,11 +13,9 @@ import { Neo4jDriver, Neo4jMiddleware } from "db";
 import { router } from "routes";
 import cors from "cors";
 import express, { Express } from "express";
-import pino from "pino-http";
+const log = require("pino")();
 import { ErrorHandler } from "errors";
-import { startNeo4JGraphQL } from "apollo_server";
-const pinoHttp = pino();
-const log = pinoHttp.logger;
+const logger = require("pino-Http");
 const {
     NEO4J_PW,
     NEO4J_URI,
@@ -59,7 +57,6 @@ while (retries < +NEO4J_CONNECTION_MAX_RETRIES && !Neo4JInitSuccess) {
         Neo4JInitSuccess = true;
         log.info("Local Neo4J connection established!");
         log.info(serverInfo);
-        startNeo4JGraphQL(localNeo4JDriver);
     } catch (err) {
         log.error(err)
         log.warn(`Neo4J connection failed...\n${+NEO4J_CONNECTION_MAX_RETRIES - retries} retries remaining...`)
@@ -75,7 +72,7 @@ app.use(Neo4jMiddleware(localNeo4JDriver!));
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(pino());
+app.use(logger);
 
 app.use("/", router);
 

@@ -1,13 +1,11 @@
 import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 import neo4j, { Driver, ServerInfo, Session } from "neo4j-driver";
-import pino from "pino";
 import { NextFunction, Request, Response } from "express";
 const {
     LOGIN_DB_URI
 } = process.env;
-
-const log = pino();
+const log = require("pino")();
 
 export function getLoginDb(): Promise<Database> {
     const result = open({

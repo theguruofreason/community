@@ -1,4 +1,10 @@
+type Query {
+    entities: [Entity!]!,
+    people: [Person!]!
+}
+
 interface Entity {
+    id: ID!
     name: String!
     creationDateTime: DateTime!
     active: Boolean!
@@ -7,6 +13,10 @@ interface Entity {
 
 type Relationship @relationshipProperties {
     descriptor: String
+}
+
+type PostContext @relationshipProperties {
+    creationDateTime: DateTime!
 }
 
 enum Role {
@@ -31,11 +41,15 @@ type ContactInformation {
 
 union Owners = Person | Business | Group
 union GroupOrBusiness = Group | Business
+union PostAuthor = Person | Business | Group | Event
 
 type Person implements Entity {
+    id: ID!
     name: String!
     familyOut: [Person!]! @relationship(type: "FAMILY", properties: "Relationship", direction: OUT)
     familyIn: [Person!]! @relationship(type: "FAMILY", properties: "Relationship", direction: IN)
+    following: [Person!]! @relationship(type: "FOLLOWING", properties: "Relationship", direction: OUT)
+    followedBy: [Person!]! @relationship(type: "FOLLOWING", properties: "Relationship", direction: IN)
     friendsOut: [Person!]! @relationship(type: "FRIENDS", properties: "Relationship", direction: OUT)
     friendsIn: [Person!]! @relationship(type: "FRIENDS", properties: "Relationship", direction: IN)
     things: [Thing!]! @relationship(type: "OWNS", properties: "Relationship", direction: OUT)
@@ -48,31 +62,34 @@ type Person implements Entity {
     description: String
     uname: String!
     contactInformation: ContactInformation
-    posts: [Post!]
+    posts: [Post!]! @relationship(type: "POSTED", properties: "PostContext", direction: OUT)
     role: Role!
 }
 
 type Place implements Entity {
+    id: ID!
     address: Address!
     name: String!
     ownedBy: [Owners!]! @relationship(type: "OWNS", properties: "Relationship", direction: IN)
-    createdBy: Entity!
+    createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
     description: String
 }
 
 type Thing implements Entity {
+    id: ID!
     type: [String!]
     name: String!
     ownedBy: [Owners!]! @relationship(type: "OWNS", properties: "Relationship", direction: IN)
-    createdBy: Entity!
+    createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
     description: String
 }
 
 type Business implements Entity {
+    id: ID!
     description: String
     contactInformation: ContactInformation
     name: String!
@@ -80,26 +97,29 @@ type Business implements Entity {
     owns: [Thing!]! @relationship(type: "EMPLOYEE", properties: "Relationship", direction: OUT)
     affiliations: [GroupOrBusiness!]! @relationship(type: "AFFILIATED_WITH", properties: "Relationship", direction: OUT)
     events: [Event!]! @relationship(type: "HOSTING", properties: "Relationship", direction: OUT)
-    createdBy: Entity!
+    posts: [Post!]! @relationship(type: "POSTED", properties: "PostContext", direction: OUT)
+    createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
 }
 
 type Group implements Entity {
-    posts: [Post]
+    id: ID!
+    posts: [Post!]! @relationship(type: "POSTED", properties: "PostContext", direction: OUT)
     name: String!
     affiliations: [Entity!]! @relationship(type: "AFFILIATED_WITH", properties: "Relationship", direction: IN)
     hostingEvents: [Event!]! @relationship(type: "HOSTING", properties: "Relationship", direction: OUT)
     attendingEvents: [Event!]! @relationship(type: "ATTENDING", properties: "Relationship", direction: OUT)
-    createdBy: Entity!
+    createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
     description: String
 }
 
 type Event implements Entity {
+    id: ID!
     occurringOn: [DateTime!]!
-    posts: [Post!]
+    posts: [Post!]! @relationship(type: "POSTED", properties: "PostContext", direction: OUT)
     name: String!
     location: Place!
     hosts: [Entity!]! @relationship(type: "HOSTING", properties: "Relationship", direction: IN)
@@ -111,36 +131,91 @@ type Event implements Entity {
     description: String
 }
 
-type Post {
-    creationDateTime: DateTime!
+enum Visibility {
+    FAMILY
+    FRIENDS
+    FOLLOWERS
+}
+
+enum PostAuthorEnum {
+    Person
+    Business
+    Group
+    Event
+}
+
+interface Post {
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    content: [PostContent!]!
+    author: PostAuthor!
+    visibility: Visibility
+    content: String!
 }
 
-type PostText {
-    text: String!
+type TextPost implements Post {
+    activationDateTime: DateTime
+    deactivationDateTime: DateTime
+    content: String!
+    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    visibility: Visibility
 }
 
-type PostImage {
-    uri: String!
+# input TextPostInput {
+#     activationDateTime: DateTime
+#     deactivationDateTime: DateTime
+#     content: String!
+#     author: PostAuthor!
+#     visibility: Visibility
+# }
+
+type ImagePost {
+    activationDateTime: DateTime
+    deactivationDateTime: DateTime
+    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    visibility: Visibility
+    content: String!
     alt_description: String
 }
 
-type PostVideo {
-    uri: String!
+type VideoPost {
+    activationDateTime: DateTime
+    deactivationDateTime: DateTime
+    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    visibility: Visibility
+    content: String!
     alt_description: String
     transcript: String
 }
 
-type PostAudio {
-    uri: String!
+type AudioPost {
+    activationDateTime: DateTime
+    deactivationDateTime: DateTime
+    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    visibility: Visibility
+    content: String!
     alt_description: String
     transcript: String
 }
 
-type PostLink {
-    url: String!
+type LinkPost {
+    activationDateTime: DateTime
+    deactivationDateTime: DateTime
+    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    visibility: Visibility
+    content: String!
 }
 
-union PostContent = PostText | PostImage | PostAudio | PostLink | PostVideo 
+# type Mutation {
+    # createTextPost(entityType: PostAuthorEnum!, activationDateTime: DateTime, deactivationDateTime: DateTime, content: String!, authorId: ID!, visibility: Visibility!) : TextPost
+    #     @cypher(
+    #         statement: """
+    #             MATCH (a:Person {id: $authorId})
+    #             CREATE (p:Post {activationDateTime: $activationDateTime, deactivationDateTime: $deactivationDateTime, content: $content, visibility: $visibility})
+    #             MERGE (a)-[:POSTED {creationDateTime: timestamp()}]->(p)
+    #             RETURN p
+    #         """,
+    #         columnName: "p"
+    #     )
+    # createImagePost(creationDateTime: DateTime!, activationDateTime: DateTime!, deactivationDateTime: DateTime, content: String!) : Post
+    # createVideoPost(creationDateTime: DateTime!, activationDateTime: DateTime!, deactivationDateTime: DateTime, content: String!) : Post
+# }
