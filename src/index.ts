@@ -9,10 +9,10 @@ Community is distributed in the hope that it will be useful, but WITHOUT ANY WAR
 
 You should have received a copy of the GNU General Public License along with Community. If not, see <https://www.gnu.org/licenses/>. 
 */
-import { Neo4jDriver, Neo4jMiddleware } from "db";
+import { initializeNeo4J, Neo4jDriver, Neo4jMiddleware } from "db";
 import { router } from "routes";
 import cors from "cors";
-import express, { Express } from "express";
+import express, { Express, Request, Response } from "express";
 const log = require("pino")();
 import { ErrorHandler } from "errors";
 const logger = require("pino-Http");
@@ -20,11 +20,13 @@ const {
     NEO4J_PW,
     NEO4J_URI,
     NEO4J_UNAME,
-    NEO4J_CONNECTION_MAX_RETRIES,
     PORT,
     ORIGIN,
 } = process.env;
 
+function loggerHandler(req: Request, res: Response) {
+    logger(req, res);
+} 
 
 const app: Express = express();
 const port = +(PORT ?? 3000);
@@ -33,49 +35,23 @@ const corsOptions = {
 };
 
 // Initialize Neo4J connection
-let retries = 0;
-let Neo4JInitSuccess = false;
-if (!NEO4J_URI || !NEO4J_UNAME || !NEO4J_PW) {
-    log.error(
-        `Missing Neo4J parameters: ${JSON.stringify({
-            uri: NEO4J_URI,
-            uname: NEO4J_UNAME,
-            pw: !!NEO4J_PW,
-        })}`
-    );
-    throw new Error("Missing Neo4J parameter");
-}
-let localNeo4JDriver: Neo4jDriver;
-while (retries < +NEO4J_CONNECTION_MAX_RETRIES && !Neo4JInitSuccess) {
-    try {
-        localNeo4JDriver = new Neo4jDriver(
-            NEO4J_URI,
-            NEO4J_UNAME,
-            NEO4J_PW
-        );
-        let serverInfo = await localNeo4JDriver.getServerInfo();
-        Neo4JInitSuccess = true;
-        log.info("Local Neo4J connection established!");
-        log.info(serverInfo);
-    } catch (err) {
-        log.error(err)
-        log.warn(`Neo4J connection failed...\n${+NEO4J_CONNECTION_MAX_RETRIES - retries} retries remaining...`)
-        retries++;
-    }
-}
-if (!Neo4JInitSuccess) {
+const localNeo4JDriver: Neo4jDriver | undefined = await initializeNeo4J(NEO4J_URI, NEO4J_UNAME, NEO4J_PW)
+if (!localNeo4JDriver) {
     log.error("Failed to connect to Neo4J database.");
     process.exit(1);
 }
 
+// Middleware
+app.use(loggerHandler);
 app.use(Neo4jMiddleware(localNeo4JDriver!));
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(logger);
 
+// Router
 app.use("/", router);
 
+// Error handling
 app.use(ErrorHandler)
 
 app.listen(port, () => {
