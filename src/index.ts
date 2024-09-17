@@ -9,24 +9,22 @@ Community is distributed in the hope that it will be useful, but WITHOUT ANY WAR
 
 You should have received a copy of the GNU General Public License along with Community. If not, see <https://www.gnu.org/licenses/>. 
 */
-import { initializeNeo4J, Neo4jDriver, Neo4jMiddleware } from "db";
+import { Neo4jDriver, Neo4jMiddleware } from "db";
 import { router } from "routes";
 import cors from "cors";
 import express, { Express, Request, Response } from "express";
-const log = require("pino")();
+import { pino } from "pino";
 import { ErrorHandler } from "errors";
-const logger = require("pino-Http");
+import { pinoHttp as logger } from "pino-http";
+const log = pino();
 const {
     NEO4J_PW,
     NEO4J_URI,
     NEO4J_UNAME,
+    NEO4J_CONNECTION_MAX_RETRIES,
     PORT,
     ORIGIN,
 } = process.env;
-
-function loggerHandler(req: Request, res: Response) {
-    logger(req, res);
-} 
 
 const app: Express = express();
 const port = +(PORT ?? 3000);
@@ -35,14 +33,14 @@ const corsOptions = {
 };
 
 // Initialize Neo4J connection
-const localNeo4JDriver: Neo4jDriver | undefined = await initializeNeo4J(NEO4J_URI, NEO4J_UNAME, NEO4J_PW)
-if (!localNeo4JDriver) {
+const localNeo4JDriver: Neo4jDriver = new Neo4jDriver(NEO4J_URI, NEO4J_UNAME, NEO4J_PW, +NEO4J_CONNECTION_MAX_RETRIES)
+if (!localNeo4JDriver.establishConnection()) {
     log.error("Failed to connect to Neo4J database.");
     process.exit(1);
 }
 
 // Middleware
-app.use(loggerHandler);
+app.use(logger());
 app.use(Neo4jMiddleware(localNeo4JDriver!));
 app.use(cors(corsOptions));
 app.use(express.json());

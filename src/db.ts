@@ -6,7 +6,8 @@ const {
     LOGIN_DB_URI,
     NEO4J_CONNECTION_MAX_RETRIES
 } = process.env;
-const log = require("pino")();
+import { pino } from "pino";
+const log = pino();
 
 export function getLoginDb(): Promise<Database> {
     const result = open({
@@ -18,11 +19,13 @@ export function getLoginDb(): Promise<Database> {
 
 export class Neo4jDriver {
     private driver: Driver;
+    private _serverInfo: ServerInfo | undefined;
 
     constructor(
         readonly uri: string,
         readonly uname: string,
-        private pw: string
+        private pw: string,
+        public maxRetries: number
     ) {
         this.driver = neo4j.driver(
             this.uri,
@@ -30,8 +33,28 @@ export class Neo4jDriver {
         );
     }
 
-    async getServerInfo(): Promise<ServerInfo> {
-        return await this.driver.getServerInfo();
+    async establishConnection(): Promise<boolean> {
+        let retries: number = 0;
+        let connectionEstablished: boolean = false;
+        while (retries <= this.maxRetries) {
+            connectionEstablished = await this.driver.getServerInfo().then((serverInfo) => {
+                log.info("Local Neo4J connection established!");
+                log.info(serverInfo);
+                this._serverInfo = serverInfo;
+                return true;
+            })
+            .catch((err) => {
+                log.error(err)
+                log.warn(`Neo4J connection failed...\n${this.maxRetries - retries} retries remaining...`)
+                retries++;
+                return false;
+            });
+        };
+        return connectionEstablished;
+    }
+
+    get serverInfo(): ServerInfo | undefined {
+        return this._serverInfo;
     }
 
     getSession(): Session {
@@ -54,37 +77,3 @@ export function Neo4jMiddleware(neo4jDriver: Neo4jDriver) {
         next();
     }
 };
-
-export async function initializeNeo4J(NEO4J_URI: string, NEO4J_UNAME: string, NEO4J_PW: string, maxRetries?: string) : Promise<Neo4jDriver | undefined> {
-    let retries = 0;
-    let Neo4JInitSuccess = false;
-    if (!NEO4J_URI || !NEO4J_UNAME || !NEO4J_PW) {
-        log.error(
-            `Missing Neo4J parameters: ${JSON.stringify({
-                uri: NEO4J_URI,
-                uname: NEO4J_UNAME,
-                pw: !!NEO4J_PW,
-            })}`
-        );
-        throw new Error("Missing Neo4J parameter");
-    }
-    let localNeo4JDriver: Neo4jDriver | undefined = undefined;
-    while (retries < +(maxRetries ?? NEO4J_CONNECTION_MAX_RETRIES) && !Neo4JInitSuccess) {
-        try {
-            localNeo4JDriver = new Neo4jDriver(
-                NEO4J_URI,
-                NEO4J_UNAME,
-                NEO4J_PW
-            );
-            let serverInfo = await localNeo4JDriver.getServerInfo();
-            Neo4JInitSuccess = true;
-            log.info("Local Neo4J connection established!");
-            log.info(serverInfo);
-        } catch (err) {
-            log.error(err)
-            log.warn(`Neo4J connection failed...\n${+(maxRetries ?? NEO4J_CONNECTION_MAX_RETRIES) - retries} retries remaining...`)
-            retries++;
-        }
-    }
-    return localNeo4JDriver;
-}
