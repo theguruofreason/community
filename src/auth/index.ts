@@ -57,5 +57,3 @@ export function isTokenValid(authHeader: string | undefined) : boolean {
 
     return true;
 }
-
-// export function require

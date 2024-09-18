@@ -27,6 +27,7 @@ declare global {
             TOKEN_SECRET: string;
             TOKEN_MAX_AGE?: string;
             TOKEN_ISSUER: string;
+            RUNTIME_ENVIRONMENT: string;
         }
     }
     namespace Express {

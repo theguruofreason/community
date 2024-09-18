@@ -6,6 +6,7 @@ import { router as auth } from "auth";
 import { handler } from "graphQuery";
 import { ruruHTML } from "ruru/server";
 import { fileURLToPath } from "url";
+const { RUNTIME_ENVIRONMENT } = process.env;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,8 +19,11 @@ router
     .use("/login", login)
     .use("/register", register)
     .use("/auth", auth)
-    .use("/graphql", handler)
-    .use("/ruru", (_req, res) => {
-        res.type("html")
-        res.end(ruruHTML({ endpoint: "/graphql" }))
-    })
+    .use("/graphql", (req: Request, res: Response) => handler(req.n4jDriver));
+if (RUNTIME_ENVIRONMENT.toLowerCase() == "dev") {
+    router
+        .use("/ruru", (_req, res) => {
+            res.type("html")
+            res.end(ruruHTML({ endpoint: "/graphql" }))
+        })
+    };

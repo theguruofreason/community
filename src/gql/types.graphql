@@ -1,7 +1,9 @@
 type Query {
-    entities: [Entity!]!,
-    people: [Person!]!
+    entity(id: ID, name: String, active: Boolean): Entity!
+    person(id: ID, uname: String, name: String): Person!
 }
+
+scalar DateTime
 
 interface Entity {
     id: ID!
@@ -11,11 +13,11 @@ interface Entity {
     description: String
 }
 
-type Relationship @relationshipProperties {
+type Relationship {
     descriptor: String
 }
 
-type PostContext @relationshipProperties {
+type PostContext {
     creationDateTime: DateTime!
 }
 
@@ -46,23 +48,23 @@ union PostAuthor = Person | Business | Group | Event
 type Person implements Entity {
     id: ID!
     name: String!
-    familyOut: [Person!]! @relationship(type: "FAMILY", properties: "Relationship", direction: OUT)
-    familyIn: [Person!]! @relationship(type: "FAMILY", properties: "Relationship", direction: IN)
-    following: [Person!]! @relationship(type: "FOLLOWING", properties: "Relationship", direction: OUT)
-    followedBy: [Person!]! @relationship(type: "FOLLOWING", properties: "Relationship", direction: IN)
-    friendsOut: [Person!]! @relationship(type: "FRIENDS", properties: "Relationship", direction: OUT)
-    friendsIn: [Person!]! @relationship(type: "FRIENDS", properties: "Relationship", direction: IN)
-    things: [Thing!]! @relationship(type: "OWNS", properties: "Relationship", direction: OUT)
-    jobs: [Business!]! @relationship(type: "EMPLOYEE", properties: "Relationship", direction: IN)
-    affiliations: [Group!]! @relationship(type: "AFFILIATED_WITH", properties: "Relationship", direction: OUT)
-    attending: [Event!]! @relationship(type: "ATTENDING", properties: "Relationship", direction: OUT)
-    hosting: [Event!]! @relationship(type: "HOSTING", properties: "Relationship", direction: OUT)
+    familyOut: [Person!]!
+    familyIn: [Person!]!
+    following: [Person!]!
+    followedBy: [Person!]!
+    friendsOut: [Person!]!
+    friendsIn: [Person!]!
+    things: [Thing!]!
+    jobs: [Business!]!
+    affiliations: [Group!]!
+    attending: [Event!]!
+    hosting: [Event!]!
     creationDateTime: DateTime!
     active: Boolean!
     description: String
     uname: String!
     contactInformation: ContactInformation
-    posts: [Post!]! @relationship(type: "POSTED", properties: "PostContext", direction: OUT)
+    posts: [Post!]!
     role: Role!
 }
 
@@ -70,7 +72,7 @@ type Place implements Entity {
     id: ID!
     address: Address!
     name: String!
-    ownedBy: [Owners!]! @relationship(type: "OWNS", properties: "Relationship", direction: IN)
+    ownedBy: [Owners!]!
     createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
@@ -81,7 +83,7 @@ type Thing implements Entity {
     id: ID!
     type: [String!]
     name: String!
-    ownedBy: [Owners!]! @relationship(type: "OWNS", properties: "Relationship", direction: IN)
+    ownedBy: [Owners!]!
     createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
@@ -93,11 +95,11 @@ type Business implements Entity {
     description: String
     contactInformation: ContactInformation
     name: String!
-    employs: [Person!]! @relationship(type: "EMPLOYEE", properties: "Relationship", direction: OUT)
-    owns: [Thing!]! @relationship(type: "EMPLOYEE", properties: "Relationship", direction: OUT)
-    affiliations: [GroupOrBusiness!]! @relationship(type: "AFFILIATED_WITH", properties: "Relationship", direction: OUT)
-    events: [Event!]! @relationship(type: "HOSTING", properties: "Relationship", direction: OUT)
-    posts: [Post!]! @relationship(type: "POSTED", properties: "PostContext", direction: OUT)
+    employs: [Person!]!
+    owns: [Thing!]!
+    affiliations: [GroupOrBusiness!]!
+    events: [Event!]!
+    posts: [Post!]!
     createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
@@ -105,11 +107,11 @@ type Business implements Entity {
 
 type Group implements Entity {
     id: ID!
-    posts: [Post!]! @relationship(type: "POSTED", properties: "PostContext", direction: OUT)
+    posts: [Post!]!
     name: String!
-    affiliations: [Entity!]! @relationship(type: "AFFILIATED_WITH", properties: "Relationship", direction: IN)
-    hostingEvents: [Event!]! @relationship(type: "HOSTING", properties: "Relationship", direction: OUT)
-    attendingEvents: [Event!]! @relationship(type: "ATTENDING", properties: "Relationship", direction: OUT)
+    affiliations: [Entity!]!
+    hostingEvents: [Event!]!
+    attendingEvents: [Event!]!
     createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
@@ -119,11 +121,11 @@ type Group implements Entity {
 type Event implements Entity {
     id: ID!
     occurringOn: [DateTime!]!
-    posts: [Post!]! @relationship(type: "POSTED", properties: "PostContext", direction: OUT)
+    posts: [Post!]!
     name: String!
     location: Place!
-    hosts: [Entity!]! @relationship(type: "HOSTING", properties: "Relationship", direction: IN)
-    attendants: [Entity!]! @relationship(type: "ATTENDING", properties: "Relationship", direction: IN)
+    hosts: [Entity!]!
+    attendants: [Entity!]!
     contactInformation: ContactInformation
     createdBy: Entity!
     creationDateTime: DateTime!
@@ -156,7 +158,7 @@ type TextPost implements Post {
     activationDateTime: DateTime
     deactivationDateTime: DateTime
     content: String!
-    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    author: PostAuthor!
     visibility: Visibility
 }
 
@@ -171,7 +173,7 @@ type TextPost implements Post {
 type ImagePost {
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    author: PostAuthor!
     visibility: Visibility
     content: String!
     alt_description: String
@@ -180,7 +182,7 @@ type ImagePost {
 type VideoPost {
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    author: PostAuthor!
     visibility: Visibility
     content: String!
     alt_description: String
@@ -190,7 +192,7 @@ type VideoPost {
 type AudioPost {
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    author: PostAuthor!
     visibility: Visibility
     content: String!
     alt_description: String
@@ -200,14 +202,13 @@ type AudioPost {
 type LinkPost {
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor! @relationship(type: "POSTED", properties: "PostContext", direction: IN)
+    author: PostAuthor!
     visibility: Visibility
     content: String!
 }
-
 # type Mutation {
     # createTextPost(entityType: PostAuthorEnum!, activationDateTime: DateTime, deactivationDateTime: DateTime, content: String!, authorId: ID!, visibility: Visibility!) : TextPost
-    #     @cypher(
+    #    
     #         statement: """
     #             MATCH (a:Person {id: $authorId})
     #             CREATE (p:Post {activationDateTime: $activationDateTime, deactivationDateTime: $deactivationDateTime, content: $content, visibility: $visibility})

@@ -7,9 +7,19 @@ import { Driver } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const typeDefs : string = await readFileSync(__dirname + "/types.graphql").toString("utf-8");
-const schema: GraphQLSchema = await buildSchema(typeDefs);
+const typeDefs : string = readFileSync(__dirname + "/types.graphql").toString("utf-8");
+const schema: GraphQLSchema = buildSchema(typeDefs);
+const resolvers = {
+    Query: {
+        entity: undefined
+    }
+}
 
-export const handler: Handler = createHandler({
-    schema: schema
-})
+export const handler = (neo4jDriver: Driver) : Handler => {
+    return createHandler({
+        schema: schema,
+        context: {
+            neo4jDriver: neo4jDriver
+        },
+    })
+}

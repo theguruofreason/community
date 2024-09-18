@@ -34,7 +34,7 @@ const corsOptions = {
 
 // Initialize Neo4J connection
 const localNeo4JDriver: Neo4jDriver = new Neo4jDriver(NEO4J_URI, NEO4J_UNAME, NEO4J_PW, +NEO4J_CONNECTION_MAX_RETRIES)
-if (!localNeo4JDriver.establishConnection()) {
+if (!await localNeo4JDriver.establishConnection()) {
     log.error("Failed to connect to Neo4J database.");
     process.exit(1);
 }
