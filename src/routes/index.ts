@@ -2,8 +2,8 @@ import { Router, Request, Response } from "express";
 import path from "path";
 import { router as login } from "login";
 import { router as register } from "register";
-import { router as auth } from "auth";
-import { handler } from "graphQuery";
+import { router as auth, requireValidToken } from "auth";
+import { handler as graphQueryHandler } from "graphQuery";
 import { ruruHTML } from "ruru/server";
 import { fileURLToPath } from "url";
 const { RUNTIME_ENVIRONMENT } = process.env;
@@ -19,7 +19,8 @@ router
     .use("/login", login)
     .use("/register", register)
     .use("/auth", auth)
-    .use("/graphql", (req: Request, res: Response) => handler(req.n4jDriver));
+    .use("/graphql", requireValidToken)
+    .post("/graphql", (req: Request, res: Response) => graphQueryHandler(req.n4jDriver));
 if (RUNTIME_ENVIRONMENT.toLowerCase() == "dev") {
     router
         .use("/ruru", (_req, res) => {

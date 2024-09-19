@@ -12,7 +12,7 @@ You should have received a copy of the GNU General Public License along with Com
 import { Neo4jDriver, Neo4jMiddleware } from "db";
 import { router } from "routes";
 import cors from "cors";
-import express, { Express, Request, Response } from "express";
+import express, { Express } from "express";
 import { pino } from "pino";
 import { ErrorHandler } from "errors";
 import { pinoHttp as logger } from "pino-http";
@@ -33,8 +33,9 @@ const corsOptions = {
 };
 
 // Initialize Neo4J connection
-const localNeo4JDriver: Neo4jDriver = new Neo4jDriver(NEO4J_URI, NEO4J_UNAME, NEO4J_PW, +NEO4J_CONNECTION_MAX_RETRIES)
-if (!await localNeo4JDriver.establishConnection()) {
+const localNeo4JDriver: Neo4jDriver = new Neo4jDriver(NEO4J_URI, NEO4J_UNAME, NEO4J_PW)
+const neo4jMaxRetries = +NEO4J_CONNECTION_MAX_RETRIES || 10;
+if (!await localNeo4JDriver.establishConnection(neo4jMaxRetries)) {
     log.error("Failed to connect to Neo4J database.");
     process.exit(1);
 }
@@ -50,7 +51,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/", router);
 
 // Error handling
-app.use(ErrorHandler)
+app.use(ErrorHandler);
 
 app.listen(port, () => {
     console.log(`[server]: Server is running at ${ORIGIN}:${port}`);

@@ -25,7 +25,6 @@ export class Neo4jDriver {
         readonly uri: string,
         readonly uname: string,
         private pw: string,
-        public maxRetries: number
     ) {
         this.driver = neo4j.driver(
             this.uri,
@@ -33,10 +32,10 @@ export class Neo4jDriver {
         );
     }
 
-    async establishConnection(): Promise<boolean> {
+    async establishConnection(maxRetries: number = 10, retryDelayms: number = 1000): Promise<boolean> {
         let retries: number = 0;
         let connectionEstablished: boolean = false;
-        while (retries <= this.maxRetries) {
+        while (retries <= maxRetries) {
             connectionEstablished = await this.driver.getServerInfo().then((serverInfo) => {
                 log.info("Local Neo4J connection established!");
                 log.info(serverInfo);
@@ -45,10 +44,11 @@ export class Neo4jDriver {
             })
             .catch((err) => {
                 log.error(err)
-                log.warn(`Neo4J connection failed...\n${this.maxRetries - retries} retries remaining...`)
+                log.warn(`Neo4J connection failed...\n${maxRetries - retries} retries remaining...`)
                 retries++;
                 return false;
             });
+            if (connectionEstablished) { break; }
         };
         return connectionEstablished;
     }
