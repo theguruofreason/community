@@ -1,6 +1,7 @@
 type Query {
-    entity(id: ID, name: String, active: Boolean): Entity!
+    # entity(id: ID, name: String, active: Boolean): Entity!
     person(id: ID, uname: String, name: String): Person!
+    hello: String!
 }
 
 scalar DateTime

@@ -18,13 +18,14 @@ router
     })
     .use("/login", login)
     .use("/register", register)
-    .use("/auth", auth)
-    .use("/graphql", requireValidToken)
-    .post("/graphql", (req: Request, res: Response) => graphQueryHandler(req.n4jDriver));
+    .use("/auth", auth);
 if (RUNTIME_ENVIRONMENT.toLowerCase() == "dev") {
     router
         .use("/ruru", (_req, res) => {
             res.type("html")
             res.end(ruruHTML({ endpoint: "/graphql" }))
         })
-    };
+        .use("/graphql", requireValidToken)
+};
+router
+    .all("/graphql", graphQueryHandler);
