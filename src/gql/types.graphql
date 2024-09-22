@@ -1,7 +1,12 @@
 type Query {
     # entity(id: ID, name: String, active: Boolean): Entity!
-    person(id: ID, uname: String, name: String): Person!
+    person(id: ID, uname: String, name: String): Person
+    posts(authorId: String!, types: [String!], before: DateTime, after: DateTime): [Post!]!
     hello: String!
+}
+
+type Mutation {
+    authorTextPost(authorId: ID!, content: String!, visibility: Visibility!, activationDateTime: DateTime, deactivationDateTime: DateTime): TextPost!
 }
 
 scalar DateTime
@@ -147,7 +152,16 @@ enum PostAuthorEnum {
     Event
 }
 
+enum PostTypeEnum {
+    TextPost
+    ImagePost
+    VideoPost
+    AudioPost
+    LinkPost
+}
+
 interface Post {
+    creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
     author: PostAuthor!
@@ -156,22 +170,16 @@ interface Post {
 }
 
 type TextPost implements Post {
+    creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    content: String!
     author: PostAuthor!
     visibility: Visibility
+    content: String!
 }
 
-# input TextPostInput {
-#     activationDateTime: DateTime
-#     deactivationDateTime: DateTime
-#     content: String!
-#     author: PostAuthor!
-#     visibility: Visibility
-# }
-
-type ImagePost {
+type ImagePost implements Post {
+    creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
     author: PostAuthor!
@@ -180,7 +188,8 @@ type ImagePost {
     alt_description: String
 }
 
-type VideoPost {
+type VideoPost implements Post {
+    creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
     author: PostAuthor!
@@ -190,7 +199,8 @@ type VideoPost {
     transcript: String
 }
 
-type AudioPost {
+type AudioPost implements Post {
+    creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
     author: PostAuthor!
@@ -200,24 +210,11 @@ type AudioPost {
     transcript: String
 }
 
-type LinkPost {
+type LinkPost implements Post {
+    creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
     author: PostAuthor!
     visibility: Visibility
     content: String!
 }
-# type Mutation {
-    # createTextPost(entityType: PostAuthorEnum!, activationDateTime: DateTime, deactivationDateTime: DateTime, content: String!, authorId: ID!, visibility: Visibility!) : TextPost
-    #    
-    #         statement: """
-    #             MATCH (a:Person {id: $authorId})
-    #             CREATE (p:Post {activationDateTime: $activationDateTime, deactivationDateTime: $deactivationDateTime, content: $content, visibility: $visibility})
-    #             MERGE (a)-[:POSTED {creationDateTime: timestamp()}]->(p)
-    #             RETURN p
-    #         """,
-    #         columnName: "p"
-    #     )
-    # createImagePost(creationDateTime: DateTime!, activationDateTime: DateTime!, deactivationDateTime: DateTime, content: String!) : Post
-    # createVideoPost(creationDateTime: DateTime!, activationDateTime: DateTime!, deactivationDateTime: DateTime, content: String!) : Post
-# }
