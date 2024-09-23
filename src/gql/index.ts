@@ -39,14 +39,20 @@ const root = {
             }
             cypher = [cypher, [whereClause, [clauses].join(" AND ")].join(" ")].join(" ");
         }
-        cypher = [cypher, "RETURN post;"].join(" ");
+        cypher = [cypher, "RETURN post, r, author;"].join(" ");
         return session.executeRead((tx: ManagedTransaction) => 
             tx.run(cypher, args)).then((res) => {
                 if (res.records.length < 1) return null;
-                return res.records.flatMap((r) => {
+                return res.records.flatMap((record) => {
+                    const {post, r, author} = record.toObject();
                     return {
-                        ...r.toObject().post.properties,
-                        __typename: r.toObject().post.labels[0]
+                        ...post.properties,
+                        __typename: post.labels[0],
+                        creationDateTime: r.properties.creationDateTime,
+                        author: {
+                            ...author.properties,
+                            __typename: author.labels[0]
+                        }
                     }
                 })
             }
