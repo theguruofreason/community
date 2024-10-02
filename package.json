@@ -25,6 +25,7 @@
         "express": "^4.19.2",
         "express-validator": "^7.1.0",
         "graphql": "^16.9.0",
+        "graphql-http": "^1.22.1",
         "graphql-scalars": "^1.23.0",
         "graphql-tools": "^9.0.1",
         "jsonwebtoken": "^9.0.2",
@@ -32,9 +33,11 @@
         "pino": "^9.3.1",
         "pino-http": "^10.2.0",
         "reflect-metadata": "^0.2.2",
+        "ruru": "2.0.0-beta.13",
         "sqlite": "^5.1.1",
         "sqlite3": "^5.1.7",
-        "type-graphql": "2.0.0-rc.2"
+        "type-graphql": "2.0.0-rc.2",
+        "uuid": "^10.0.0"
     },
     "devDependencies": {
         "@types/bcrypt": "^5.0.2",
@@ -43,6 +46,8 @@
         "@types/jsonwebtoken": "^9.0.6",
         "@types/mssql": "^9.1.5",
         "@types/node": "^20.12.1",
+        "@types/pino-http": "^5.8.4",
+        "@types/uuid": "^10.0.0",
         "copyfiles": "^2.4.1",
         "eslint": "^8.56.0",
         "nodemon": "^3.1.1",

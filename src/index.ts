@@ -13,11 +13,10 @@ import { Neo4jDriver, Neo4jMiddleware } from "db";
 import { router } from "routes";
 import cors from "cors";
 import express, { Express } from "express";
-import pino from "pino-http";
+import { pino } from "pino";
 import { ErrorHandler } from "errors";
-import { startNeo4JGraphQL } from "apollo_server";
-const pinoHttp = pino();
-const log = pinoHttp.logger;
+import { pinoHttp as logger } from "pino-http";
+const log = pino();
 const {
     NEO4J_PW,
     NEO4J_URI,
@@ -27,7 +26,6 @@ const {
     ORIGIN,
 } = process.env;
 
-
 const app: Express = express();
 const port = +(PORT ?? 3000);
 const corsOptions = {
@@ -35,51 +33,25 @@ const corsOptions = {
 };
 
 // Initialize Neo4J connection
-let retries = 0;
-let Neo4JInitSuccess = false;
-if (!NEO4J_URI || !NEO4J_UNAME || !NEO4J_PW) {
-    log.error(
-        `Missing Neo4J parameters: ${JSON.stringify({
-            uri: NEO4J_URI,
-            uname: NEO4J_UNAME,
-            pw: !!NEO4J_PW,
-        })}`
-    );
-    throw new Error("Missing Neo4J parameter");
-}
-let localNeo4JDriver: Neo4jDriver;
-while (retries < +NEO4J_CONNECTION_MAX_RETRIES && !Neo4JInitSuccess) {
-    try {
-        localNeo4JDriver = new Neo4jDriver(
-            NEO4J_URI,
-            NEO4J_UNAME,
-            NEO4J_PW
-        );
-        let serverInfo = await localNeo4JDriver.getServerInfo();
-        Neo4JInitSuccess = true;
-        log.info("Local Neo4J connection established!");
-        log.info(serverInfo);
-        startNeo4JGraphQL(localNeo4JDriver);
-    } catch (err) {
-        log.error(err)
-        log.warn(`Neo4J connection failed...\n${+NEO4J_CONNECTION_MAX_RETRIES - retries} retries remaining...`)
-        retries++;
-    }
-}
-if (!Neo4JInitSuccess) {
+const localNeo4JDriver: Neo4jDriver = new Neo4jDriver(NEO4J_URI, NEO4J_UNAME, NEO4J_PW)
+const neo4jMaxRetries = +NEO4J_CONNECTION_MAX_RETRIES || 10;
+if (!await localNeo4JDriver.establishConnection(neo4jMaxRetries)) {
     log.error("Failed to connect to Neo4J database.");
     process.exit(1);
 }
 
+// Middleware
+app.use(logger());
 app.use(Neo4jMiddleware(localNeo4JDriver!));
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(pino());
 
+// Router
 app.use("/", router);
 
-app.use(ErrorHandler)
+// Error handling
+app.use(ErrorHandler);
 
 app.listen(port, () => {
     console.log(`[server]: Server is running at ${ORIGIN}:${port}`);

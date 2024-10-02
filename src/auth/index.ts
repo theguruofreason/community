@@ -10,8 +10,9 @@ interface JWTPayload {
 };
 
 router
-    .post("/", (req: Request, response: Response, next: NextFunction) => {
-
+    .use("/", requireValidToken)
+    .get("/", (req: Request, res: Response, next: NextFunction) => {
+        res.send("Token is valid!");
     })
 
 export function generateAccessToken(payload: JWTPayload, subject?: string) : string {
@@ -42,6 +43,7 @@ export function requireValidToken(req: Request, res: Response, next: NextFunctio
         next(e);
     }
 
+    next();
 }
 
 export function isTokenValid(authHeader: string | undefined) : boolean {
@@ -57,5 +59,3 @@ export function isTokenValid(authHeader: string | undefined) : boolean {
 
     return true;
 }
-
-// export function require

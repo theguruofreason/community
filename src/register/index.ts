@@ -13,10 +13,11 @@ import bcrypt from "bcrypt";
 import Router, { Response, Request, NextFunction } from "express";
 import path from "path";
 import { getLoginDb } from "db";
-import { SALT_ROUNDS } from "../helpers/configs";
+import { SALT_ROUNDS } from "configs";
 import { Driver } from "neo4j-driver";
 import { Statement } from "sqlite";
 import { fileURLToPath } from "url";
+import { v4 as uuidv4 } from "uuid";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -110,9 +111,11 @@ async function register(
     const sqliteStatement: Statement = await loginDB.prepare(
         `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (:uname, :email, :password)`
     );
-    const userInfoParamString: string = Object.entries(userInfo).map( keyval => {
+    const userInfoParams: string[] = Object.entries(userInfo).map( keyval => {
         return `${keyval[0]}: $${keyval[0]}`
-    }).join(", ");
+    });
+    // TODO: Move id generation to Neo4J using apoc pluggin
+    userInfoParams.push("id: $id");
     await Promise.all([
         sqliteStatement.get({
             ":uname": userInfo.uname,
@@ -120,8 +123,8 @@ async function register(
             ":password": hash,
         }),
         n4jDriver.executeQuery(
-            `MERGE (p:Person {${userInfoParamString}})`,
-            userInfo
+            `MERGE (p:Person {${userInfoParams.join(", ")}})`,
+            {...userInfo, ...{ id: uuidv4() }}
         ),
     ]);
 }

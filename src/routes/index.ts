@@ -2,9 +2,11 @@ import { Router, Request, Response } from "express";
 import path from "path";
 import { router as login } from "login";
 import { router as register } from "register";
-import { router as rel } from "relationships";
-import { router as auth } from "auth";
+import { router as auth, requireValidToken } from "auth";
+import { handler as graphQueryHandler } from "graphQuery";
+import { ruruHTML } from "ruru/server";
 import { fileURLToPath } from "url";
+const { RUNTIME_ENVIRONMENT } = process.env;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,5 +18,14 @@ router
     })
     .use("/login", login)
     .use("/register", register)
-    .use("/connect", rel)
     .use("/auth", auth);
+if (RUNTIME_ENVIRONMENT.toLowerCase() == "dev") {
+    router.use("/ruru", (_req, res) => {
+        res.type("html")
+        res.end(ruruHTML({ endpoint: "/graphql" }))
+    });
+if (["prod", "test"].includes(RUNTIME_ENVIRONMENT.toLocaleLowerCase()))
+    router.use("/graphql", requireValidToken);
+};
+router
+    .all("/graphql", graphQueryHandler);
