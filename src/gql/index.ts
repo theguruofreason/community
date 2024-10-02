@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import path from "path";
 import { ManagedTransaction, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
-import { makeExecutableSchema } from "graphql-tools";
+import { makeExecutableSchema } from "@graphql-tools/schema";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const ENTITY_LABELS: string[] = [
