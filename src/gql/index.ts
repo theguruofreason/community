@@ -7,43 +7,90 @@ import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "graphql-tools";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-function lookupPerson(args: any, session: Session) {
-    const argString = Object.keys(args).map((key) => { return `${key}: $${key}`}).join(", ");
-    let cypher = `MATCH (p:Person {${argString}}) RETURN p;`;
+const ENTITY_LABELS: string[] = [
+    "Person",
+    "Place",
+    "Thing",
+    "Business",
+    "Group",
+    "Event"
+]
+
+const POST_TYPES: string[] = [
+    "TextPost",
+    "ImagePost",
+    "AudioPost",
+    "VideoPost",
+    "LinkPost"
+]
+function createArgString(args: object): string {
+    return Object.keys(args).map((key) => `${key}: $${key}`).join(", ");
+}
+
+function lookupPeople(args: object, session: Session) {
+    let cypher = `MATCH (p:Person {${createArgString(args)}}) RETURN p;`;
     return session.executeRead((tx: ManagedTransaction) =>
         tx.run(cypher, args)).then((res) => {
+            return res.records.length > 0 ? res.records.map((record) => record.toObject().p.properties) : null;
+        }
+    );
+}
+
+function lookupEntities(args: any, session: Session) {
+    const {before, after, labels} = args;
+    delete args.labels;
+    const entityLabelsString: string = (labels ?? ENTITY_LABELS).join("|");
+    let matchString: string = `MATCH (e:${entityLabelsString} {${createArgString(args)}})`;
+    let clauses: string[] = [];
+    if (args.before || args.after) {
+        if (before) {
+            clauses.push("e.creationDateTime < $before");
+        }
+        if (after) {
+            clauses.push("e.creationDateTime > $after");
+        }
+    }
+    const whereString: string = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+    const cypher = `${matchString} ${whereString} RETURN e`;
+    return session.executeRead((tx: ManagedTransaction) => 
+        tx.run(cypher, args)).then((res) => {
             if (res.records.length < 1) return null;
-            return {
-                ...res.records[0].toObject().p.properties,
-            };
+            return res.records.flatMap((record) => {
+                const {e} = record.toObject();
+                return {
+                    ...e.properties,
+                    __typename: e.labels.find((label) => ENTITY_LABELS.includes(label))
+                }
+            })
         }
     );
 }
 
 function getPostsByAuthorId(authorId: string, args: any, session: Session) {
     const {types, before, after} = args;
-    const typesString: string = types ? ":" + types?.join(":") : "";
-    let cypher: string = `MATCH (author {id: $authorId})-[r:AUTHORED]->(post${typesString})`
+    delete args.types;
+    const typesString: string = types ? ":" + types.join("|") : "";
+    let matchString: string = `MATCH (author {id: $authorId})-[r:AUTHORED]->(post${typesString})`
+    let clauses: string[] = [];
     if (args.before || args.after) {
-        let whereClause: string[] = ["WHERE"];
-        let clauses: string[] = [];
         if (before) {
             clauses.push("r.creationDateTime < $before");
         }
         if (after) {
             clauses.push("r.creationDateTime > $after");
         }
-        cypher = [cypher, [whereClause, [clauses].join(" AND ")].join(" ")].join(" ");
     }
-    cypher = [cypher, "RETURN post, r, author;"].join(" ");
+    const whereString: string = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+    const cypher = `${matchString} ${whereString} RETURN post, r`;
     return session.executeRead((tx: ManagedTransaction) => 
         tx.run(cypher, {...args, authorId})).then((res) => {
             if (res.records.length < 1) return null;
             return res.records.flatMap((record) => {
-                const {post, r, author} = record.toObject();
+                const {post, r} = record.toObject();
                 return {
                     ...post.properties,
-                    __typename: post.labels[0],
+                    visibility: Array.isArray(post.properties.visibility) ? post.properties.visibility : [post.properties.visibility],
+                    __typename: post.labels.find((label) => POST_TYPES.includes(label)),
                     creationDateTime: r.properties.creationDateTime,
                 }
             })
@@ -58,10 +105,10 @@ function authorTextPost(args: any, session: Session) {
     const cypher = `MATCH (p {id: $authorId})
     CREATE (tp:Post:TextPost {activationDateTime: $activationDateTime, deactivationDateTime: $deactivationDateTime, visibility: $visibility, content: $content})
     CREATE (p)-[r:AUTHORED {creationDateTime: $creationDateTime}]->(tp)
-    RETURN tp, p, r;`
+    RETURN tp, r;`
     return session.executeWrite((tx: ManagedTransaction) =>
         tx.run(cypher, args)).then((res) => {
-            const {tp, p, r}= res.records[0].toObject();
+            const {tp, r} = res.records[0].toObject();
             return {
                 ...tp.properties,
                 creationDateTime: r.properties.creationDateTime,
@@ -72,8 +119,9 @@ function authorTextPost(args: any, session: Session) {
 
 const resolvers = {
     Query: {
-        person: (root, args, context, info) => lookupPerson(args, context.n4jDriver.session()),
+        people: (root, args, context, info) => lookupPeople(args, context.n4jDriver.session()),
         posts: (root, args, context, info) => getPostsByAuthorId(args.authorId, args, context.n4jDriver.session()),
+        entities: (root, args, context, info) => lookupEntities(args, context.n4jDriver.session())
     },
     Mutation: {
         authorTextPost: (root, args, context, info) => authorTextPost(args, context.n4jDriver.session())
@@ -85,84 +133,6 @@ const resolvers = {
 
 const typeDefs : string = readFileSync(__dirname + "/types.graphql").toString("utf-8");
 const schema: GraphQLSchema = makeExecutableSchema({typeDefs, resolvers});
-
-const root2 = {
-    person(args: any, context: any, info: any) {
-        const session: Session = context.n4jDriver.session();
-        const argString = Object.keys(args).map((key) => { return `${key}: $${key}`}).join(", ");
-        let cypher = `MATCH (p:Person {${argString}}) RETURN p;`;
-        return session.executeRead((tx: ManagedTransaction) =>
-            tx.run(cypher, args)).then((res) => {
-                if (res.records.length < 1) return null;
-                return {
-                    ...res.records[0].toObject().p.properties,
-                    posts: this.posts
-                };
-            }
-        );
-    },
-    posts(args: any, context: any, info: any) {
-        const session: Session = context.n4jDriver.session();
-        const {authorId, types} = args;
-        const typesString: string = types ? ":" + types?.join(":") : "";
-        let cypher: string = `MATCH (author {id: $authorId})-[r:AUTHORED]->(post${typesString})`
-        if (args.before || args.after) {
-            let whereClause: string[] = ["WHERE"];
-            let clauses: string[] = [];
-            if (args.before) {
-                clauses.push("r.creationDateTime < $before");
-            }
-            if (args.after) {
-                clauses.push("r.creationDateTime > $after");
-            }
-            cypher = [cypher, [whereClause, [clauses].join(" AND ")].join(" ")].join(" ");
-        }
-        cypher = [cypher, "RETURN post, r, author;"].join(" ");
-        return session.executeRead((tx: ManagedTransaction) => 
-            tx.run(cypher, args)).then((res) => {
-                if (res.records.length < 1) return null;
-                return res.records.flatMap((record) => {
-                    const {post, r, author} = record.toObject();
-                    return {
-                        ...post.properties,
-                        __typename: post.labels[0],
-                        creationDateTime: r.properties.creationDateTime,
-                        author: {
-                            ...author.properties,
-                            __typename: author.labels[0]
-                        }
-                    }
-                })
-            }
-        );
-    },
-    authorTextPost(args: any, context: any, info: any) {
-        const session: Session = context.n4jDriver.session();
-        args.creationDateTime = new Date().getTime();
-        if (!("deactivationDateTime" in args)) args.deactivationDateTime = null;
-        if (!("activationDateTime" in args)) args.activationDateTime = args.creationDateTime;
-        const cypher = `MATCH (p {id: $authorId})
-        CREATE (tp:Post:TextPost {activationDateTime: $activationDateTime, deactivationDateTime: $deactivationDateTime, visibility: $visibility, content: $content})
-        CREATE (p)-[r:AUTHORED {creationDateTime: $creationDateTime}]->(tp)
-        RETURN tp, p, r;`
-        return session.executeWrite((tx: ManagedTransaction) =>
-            tx.run(cypher, args)).then((res) => {
-                const {tp, p, r}= res.records[0].toObject();
-                return {
-                    ...tp.properties,
-                    creationDateTime: r.properties.creationDateTime,
-                    author: {
-                        ...p.properties,
-                        __typename: p.labels[0]
-                    }
-                };
-            }
-        );
-    },
-    hello() {
-        return "Hello, world!";
-    }
-}
 
 export const handler = createHandler({
     schema: schema,

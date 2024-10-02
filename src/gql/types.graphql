@@ -1,12 +1,13 @@
 type Query {
-    # entity(id: ID, name: String, active: Boolean): Entity!
-    person(id: ID, uname: String, name: String): Person
-    posts(authorId: String!, types: [String!], before: DateTime, after: DateTime): [Post!]!
-    hello: String!
+    entities(id: ID, name: String, labels: [EntityLabels!], active: Boolean, before: DateTime, after: DateTime): [Entity]
+    people(id: ID, uname: String, name: String): [Person]
+    posts(authorId: ID!, before: DateTime, after: DateTime, types: [PostType!]): [Post!]
+    # hello: String!
 }
 
 type Mutation {
-    authorTextPost(authorId: ID!, content: String!, visibility: Visibility!, activationDateTime: DateTime, deactivationDateTime: DateTime): TextPost!
+    authorTextPost(authorId: ID!, content: String!, visibility: [Visibility!]!, activationDateTime: DateTime, deactivationDateTime: DateTime): TextPost!
+    # establishRelationship(subject: ID!, object: ID!, relationshipTypes: RelationshipTypes!, description: String)
 }
 
 scalar DateTime
@@ -17,6 +18,33 @@ interface Entity {
     creationDateTime: DateTime!
     active: Boolean!
     description: String
+}
+
+enum EntityLabels {
+    Person,
+    Place,
+    Thing,
+    Business,
+    Group,
+    Event
+}
+
+enum RelationshipTypes {
+    FAMILY
+    FOLLOW
+    FRIEND
+    OWNERSHIP
+    EMPLOYMENT
+    MEMBERSHIP
+    AFFILIATION
+}
+
+enum PostType {
+    TextPost
+    ImagePost
+    AudioPost
+    VideoPost
+    LinkPost
 }
 
 type Relationship {
@@ -70,7 +98,7 @@ type Person implements Entity {
     description: String
     uname: String!
     contactInformation: ContactInformation
-    posts: [Post!]!
+    posts(types: [PostType], before: DateTime, after: DateTime): [Post!]!
     role: Role!
 }
 
@@ -143,29 +171,15 @@ enum Visibility {
     FAMILY
     FRIENDS
     FOLLOWERS
-}
-
-enum PostAuthorEnum {
-    Person
-    Business
-    Group
-    Event
-}
-
-enum PostTypeEnum {
-    TextPost
-    ImagePost
-    VideoPost
-    AudioPost
-    LinkPost
+    MEMBERS
+    AFFILIATES
 }
 
 interface Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor!
-    visibility: Visibility
+    visibility: [Visibility]
     content: String!
 }
 
@@ -173,8 +187,7 @@ type TextPost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor!
-    visibility: Visibility
+    visibility: [Visibility]
     content: String!
 }
 
@@ -182,8 +195,7 @@ type ImagePost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor!
-    visibility: Visibility
+    visibility: [Visibility]
     content: String!
     alt_description: String
 }
@@ -192,8 +204,7 @@ type VideoPost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor!
-    visibility: Visibility
+    visibility: [Visibility]
     content: String!
     alt_description: String
     transcript: String
@@ -203,8 +214,7 @@ type AudioPost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor!
-    visibility: Visibility
+    visibility: [Visibility]
     content: String!
     alt_description: String
     transcript: String
@@ -214,7 +224,6 @@ type LinkPost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    author: PostAuthor!
-    visibility: Visibility
+    visibility: [Visibility]
     content: String!
 }
