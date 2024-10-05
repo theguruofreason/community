@@ -7,7 +7,7 @@ type Query {
 
 type Mutation {
     authorTextPost(authorId: ID!, content: String!, visibility: [Visibility!]!, activationDateTime: DateTime, deactivationDateTime: DateTime): TextPost!
-    # establishRelationship(subject: ID!, object: ID!, relationshipTypes: RelationshipTypes!, description: String)
+    establishRelationship(subjectId: ID!, objectId: ID!, relationshipType: RelationshipTypes!, descriptor: String): Relationship!
 }
 
 scalar DateTime
@@ -48,6 +48,8 @@ enum PostType {
 }
 
 type Relationship {
+    subject: Entity!
+    object: Entity!
     descriptor: String
 }
 
@@ -63,6 +65,7 @@ enum Role {
 
 type Address {
     line1: String!
+    line2: String
     country: String!
     city: String!
     zip: [Int!]
@@ -75,24 +78,24 @@ type ContactInformation {
     socials: [String!]
 }
 
-union Owners = Person | Business | Group
+union Owner = Person | Business | Group
 union GroupOrBusiness = Group | Business
 union PostAuthor = Person | Business | Group | Event
 
 type Person implements Entity {
     id: ID!
     name: String!
-    familyOut: [Person!]!
-    familyIn: [Person!]!
-    following: [Person!]!
-    followedBy: [Person!]!
-    friendsOut: [Person!]!
-    friendsIn: [Person!]!
-    things: [Thing!]!
-    jobs: [Business!]!
-    affiliations: [Group!]!
-    attending: [Event!]!
-    hosting: [Event!]!
+    familyOut: [Person!]
+    familyIn: [Person!]
+    following: [Person!]
+    followedBy: [Person!]
+    friendsOut: [Person!]
+    friendsIn: [Person!]
+    things: [Thing!]
+    jobs: [Business!]
+    affiliations: [Group!]
+    attending: [Event!]
+    hosting: [Event!]
     creationDateTime: DateTime!
     active: Boolean!
     description: String
@@ -106,7 +109,7 @@ type Place implements Entity {
     id: ID!
     address: Address!
     name: String!
-    ownedBy: [Owners!]!
+    ownedBy: [Owner!]
     createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
@@ -117,7 +120,7 @@ type Thing implements Entity {
     id: ID!
     type: [String!]
     name: String!
-    ownedBy: [Owners!]!
+    ownedBy: [Owner!]!
     createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
@@ -129,11 +132,11 @@ type Business implements Entity {
     description: String
     contactInformation: ContactInformation
     name: String!
-    employs: [Person!]!
-    owns: [Thing!]!
-    affiliations: [GroupOrBusiness!]!
-    events: [Event!]!
-    posts: [Post!]!
+    employs: [Person!]
+    owns: [Thing!]
+    affiliations: [GroupOrBusiness!]
+    events: [Event!]
+    posts: [Post!]
     createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
@@ -141,11 +144,11 @@ type Business implements Entity {
 
 type Group implements Entity {
     id: ID!
-    posts: [Post!]!
+    posts: [Post!]
     name: String!
-    affiliations: [Entity!]!
-    hostingEvents: [Event!]!
-    attendingEvents: [Event!]!
+    affiliations: [Entity!]
+    hostingEvents: [Event!]
+    attendingEvents: [Event!]
     createdBy: ID!
     creationDateTime: DateTime!
     active: Boolean!
@@ -155,11 +158,11 @@ type Group implements Entity {
 type Event implements Entity {
     id: ID!
     occurringOn: [DateTime!]!
-    posts: [Post!]!
+    posts: [Post!]
     name: String!
-    location: Place!
+    location: Place
     hosts: [Entity!]!
-    attendants: [Entity!]!
+    attendants: [Entity!]
     contactInformation: ContactInformation
     createdBy: Entity!
     creationDateTime: DateTime!
@@ -179,7 +182,7 @@ interface Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    visibility: [Visibility]
+    visibility: [Visibility!]!
     content: String!
 }
 
@@ -187,7 +190,7 @@ type TextPost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    visibility: [Visibility]
+    visibility: [Visibility!]!
     content: String!
 }
 
@@ -195,7 +198,7 @@ type ImagePost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    visibility: [Visibility]
+    visibility: [Visibility!]!
     content: String!
     alt_description: String
 }
@@ -204,7 +207,7 @@ type VideoPost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    visibility: [Visibility]
+    visibility: [Visibility!]!
     content: String!
     alt_description: String
     transcript: String
@@ -214,7 +217,7 @@ type AudioPost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    visibility: [Visibility]
+    visibility: [Visibility!]!
     content: String!
     alt_description: String
     transcript: String
@@ -224,6 +227,6 @@ type LinkPost implements Post {
     creationDateTime: DateTime!
     activationDateTime: DateTime
     deactivationDateTime: DateTime
-    visibility: [Visibility]
+    visibility: [Visibility!]!
     content: String!
 }

@@ -5,6 +5,7 @@ import path from "path";
 import { ManagedTransaction, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
+import { EstablishRelationshipInput, Relationship } from "./types.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const ENTITY_LABELS: string[] = [
@@ -23,6 +24,7 @@ const POST_TYPES: string[] = [
     "VideoPost",
     "LinkPost"
 ]
+
 function createArgString(args: object): string {
     return Object.keys(args).map((key) => `${key}: $${key}`).join(", ");
 }
@@ -72,15 +74,16 @@ function getPostsByAuthorId(authorId: string, args: any, session: Session) {
     const typesString: string = types ? ":" + types.join("|") : "";
     let matchString: string = `MATCH (author {id: $authorId})-[r:AUTHORED]->(post${typesString})`
     let clauses: string[] = [];
-    if (args.before || args.after) {
-        if (before) {
-            clauses.push("r.creationDateTime < $before");
-        }
-        if (after) {
-            clauses.push("r.creationDateTime > $after");
-        }
+    
+    // Add clauses if present
+    if (before) {
+        clauses.push("r.creationDateTime < $before");
+    }
+    if (after) {
+        clauses.push("r.creationDateTime > $after");
     }
     const whereString: string = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+
     const cypher = `${matchString} ${whereString} RETURN post, r`;
     return session.executeRead((tx: ManagedTransaction) => 
         tx.run(cypher, {...args, authorId})).then((res) => {
@@ -117,6 +120,29 @@ function authorTextPost(args: any, session: Session) {
     );
 }
 
+function establishRelationship(args: EstablishRelationshipInput, session: Session) : Promise<Relationship> {
+    const matchString: string = `MATCH (subject {id: $subjectId}) MATCH (object {id: $objectId})`;
+    const descriptionString: string = args.descriptor ? `{descriptor: $descriptor}` : "";
+    const relationshipString: string = `MERGE (subject)-[r:${args.relationshipType} ${descriptionString}]->(object)`;
+    const cypher: string = `${matchString} ${relationshipString} RETURN subject, object, r;`;
+    return session.executeWrite((tx: ManagedTransaction) =>
+        tx.run(cypher, args)).then((res) => {
+            const {subject, object, r} = res.records[0].toObject();
+            return {
+                subject: {
+                    ...subject.properties,
+                    __typename: subject.labels.find((label) => ENTITY_LABELS.includes(label))
+                },
+                object: {
+                    ...object.properties,
+                    __typename: object.labels.find((label) => ENTITY_LABELS.includes(label))
+                },
+                descriptor: r.properties.descriptor
+            };
+        }
+    );
+}
+
 const resolvers = {
     Query: {
         people: (root, args, context, info) => lookupPeople(args, context.n4jDriver.session()),
@@ -124,7 +150,8 @@ const resolvers = {
         entities: (root, args, context, info) => lookupEntities(args, context.n4jDriver.session())
     },
     Mutation: {
-        authorTextPost: (root, args, context, info) => authorTextPost(args, context.n4jDriver.session())
+        authorTextPost: (root, args, context, info) => authorTextPost(args, context.n4jDriver.session()),
+        establishRelationship: (root, args, context, info) => establishRelationship(args, context.n4jDriver.session())
     },
     Person: {
         posts: (author, args, context, info) =>  getPostsByAuthorId(author.id, args, context.n4jDriver.session()),
