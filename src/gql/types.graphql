@@ -6,7 +6,7 @@ type Query {
 
 type Mutation {
     authorTextPost(authorId: ID!, content: String!, visibility: [Visibility!]!, activationDateTime: DateTime, deactivationDateTime: DateTime): TextPost!
-    establishRelationship(subjectId: ID!, objectId: ID!, relationshipType: RelationshipTypes!, descriptor: String): Relationship!
+    establishRelationship(subjectId: ID!, objectId: ID!, relationshipType: RelationshipType!, descriptor: String): Relationship!
 }
 
 scalar DateTime
@@ -28,7 +28,7 @@ enum EntityLabels {
     Event
 }
 
-enum RelationshipTypes {
+enum RelationshipType {
     FAMILY
     FOLLOW
     FRIEND
@@ -84,12 +84,7 @@ union PostAuthor = Person | Business | Group | Event
 type Person implements Entity {
     id: ID!
     name: String!
-    familyOut: [Person!]
-    familyIn: [Person!]
-    following: [Person!]
-    followedBy: [Person!]
-    friendsOut: [Person!]
-    friendsIn: [Person!]
+    people(relationshipTypes: [relationshipType!], descriptorSearch: String): [Person!]
     things: [Thing!]
     jobs: [Business!]
     affiliations: [Group!]

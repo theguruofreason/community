@@ -16,7 +16,8 @@ import path from "path";
 import { ManagedTransaction, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
-import { EstablishRelationshipInput, Relationship } from "./types.js";
+import { Entity, EstablishRelationshipInput, Relationship, RelationshipType } from "./types.js";
+import { UUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const ENTITY_LABELS: string[] = [
@@ -36,24 +37,47 @@ const POST_TYPES: string[] = [
     "LinkPost"
 ]
 
-function createArgString(args: object): string {
+function createPropertiesString(args: object): string {
     return Object.keys(args).map((key) => `${key}: $${key}`).join(", ");
 }
 
 function lookupPeople(args: object, session: Session) {
-    let cypher = `MATCH (p:Person {${createArgString(args)}}) RETURN p;`;
+    let cypher = `MATCH (p:Person {${createPropertiesString(args)}}) RETURN p;`;
     return session.executeRead((tx: ManagedTransaction) =>
         tx.run(cypher, args)).then((res) => {
-            return res.records.length > 0 ? res.records.map((record) => record.toObject().p.properties) : null;
+            return res.records.map(
+                (record) => record.toObject().p.properties
+            );
         }
     );
+}
+
+function lookupRelatedEntities(primaryId: UUID, session: Session, relationshipTypes?: RelationshipType[], descriptorSearch?: string) : Promise<Entity[]> {
+    const relationshipTypesString: string = relationshipTypes ? ":" + relationshipTypes?.join("|") : "";
+    let cypher = `MATCH (p {id: $primaryId})-[r${relationshipTypesString}]-(s)`;
+    if (descriptorSearch) {
+        cypher.concat(` WHERE r.descriptor =~ '${descriptorSearch}`);
+    }
+    return session.executeRead((tx: ManagedTransaction) => 
+        tx.run(cypher, { primaryId: primaryId }).then((res) => {
+            return res.records.map(
+                (record) => {
+                    const recordObject = record.toObject();
+                    return {
+                        ...recordObject.s.properties,
+                        __typename: recordObject.s.labels.find((label) => ENTITY_LABELS.includes(label))
+                    }
+                }
+            )
+        })
+    )
 }
 
 function lookupEntities(args: any, session: Session) {
     const {before, after, labels} = args;
     delete args.labels;
     const entityLabelsString: string = (labels ?? ENTITY_LABELS).join("|");
-    let matchString: string = `MATCH (e:${entityLabelsString} {${createArgString(args)}})`;
+    let matchString: string = `MATCH (e:${entityLabelsString} {${createPropertiesString(args)}})`;
     let clauses: string[] = [];
     if (args.before || args.after) {
         if (before) {
@@ -166,6 +190,7 @@ const resolvers = {
     },
     Person: {
         posts: (author, args, context, info) =>  getPostsByAuthorId(author.id, args, context.n4jDriver.session()),
+        familyOut: (primary, args, context, info) => lookupPeople
     }
 }
 

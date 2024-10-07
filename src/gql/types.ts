@@ -2,7 +2,7 @@ import { UUID } from "crypto";
 
 // String Literals
 
-type RelationshipType =  
+export type RelationshipType =  
     "FAMILY" |
     "FOLLOW" |
     "FRIEND" |
@@ -25,6 +25,7 @@ export type Role =
 
 // Interfaces 
 export interface Entity {
+    __typename: string;
     id: string;
     name: string;
     creationDateTime: Date;
