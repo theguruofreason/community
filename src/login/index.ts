@@ -18,6 +18,9 @@ export const router = Router();
 import { fileURLToPath } from "url";
 import { generateAccessToken } from "auth";
 import { Database } from "sqlite";
+import { IErrorWithStatus } from "errors";
+import { LoginRequestBody, Roles } from "./types.js";
+
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,9 +28,9 @@ router
     .get("/", (_, res: Response) => {
         res.sendFile(path.join(__dirname, "index.html"));
     })
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     .post("/", async (req: Request, res: Response, next: NextFunction) => {
-        const uname: string = req.body.uname;
-        const pass: string = req.body.pass;
+        const { uname , pass }= req.body as LoginRequestBody;
         if (!uname || !pass) {
             next({
                 status: 400,
@@ -40,21 +43,24 @@ router
             await validateLogin(uname, pass, db);
             req.log.info(`Successful login!`);
             const stmt = `SELECT roles FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-            const roles = await db.get(stmt, {
+            const roles: Roles = await db.get(stmt, {
                 ":uname": uname
-            })
+            }) ?? 0;
             const jwt: string = generateAccessToken({uname: uname, roles: roles});
             res.json({
                 token: jwt
             })
-        } catch (e: any) {
+            return;
+        } catch (e: unknown) {
             next(e);
+            return;
         }
     })
-    .post("/out", async (req: Request, res: Response, next: NextFunction) => {
-        const authHeader: string | undefined = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-
+    .post("/out", (req: Request, res: Response, next: NextFunction) => {
+        const authHeader: string | undefined = req.headers.authorization;
+        const token: string = authHeader?.split(' ')[1];
+        res.status(200);
+        return;
     });
 
 async function validateLogin(uname: string, pass: string, db: Database): Promise<void> {
@@ -66,12 +72,12 @@ async function validateLogin(uname: string, pass: string, db: Database): Promise
         throw {
             status: 401,
             message: `Username ${uname} not registered...`,
-        };
+        } as IErrorWithStatus;
     }
     if (!bcrypt.compareSync(pass, result.pw)) {
         throw {
             status: 401,
             message: `Incorrect password.`
-        }; 
+        } as IErrorWithStatus; 
     }
 }
