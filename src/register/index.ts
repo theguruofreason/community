@@ -18,6 +18,8 @@ import { Driver } from "neo4j-driver";
 import { Statement } from "sqlite";
 import { fileURLToPath } from "url";
 import { v4 as uuidv4 } from "uuid";
+import { IErrorWithStatus } from "errors";
+import { LoginSchema, UserInfoSchema, UserInfo } from "./types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,36 +30,27 @@ router
     .get("/", (_, res: Response) => {
         res.sendFile(path.join(__dirname, "index.html"));
     })
-    .post("/", async (req: Request, res: Response, next: NextFunction) => {
+    .post("/", (req: Request, res: Response, next: NextFunction) => {
         const neo4jDriver: Driver = req.n4jDriver;
-        const userInfo: UserInfo = {
-            uname: req.body.uname,
-            email: req.body.email,
-            pass: req.body.pass,
-            name: req.body.name,
-            ...(req.body.description && {description: req.body.description}),
-            role: req.body.role || "USER",
-            active: true,
-            creationDateTime: new Date().toISOString(),
-        }
+        const userInfo: UserInfo = UserInfoSchema.parse(req.body);
         if (!userInfo.uname || !userInfo.pass || !userInfo.name) {
             throw {
                 status: 400,
                 message: "Username, name, and password required."
-            };
+            } as IErrorWithStatus;
         }
         register(
             userInfo,
             neo4jDriver
         ).then(() => {
             res.sendStatus(200);
-        }).catch((e: any) => {
+        }).catch((e: unknown) => {
             next(e);
         });
     })
-    .post("/u", async (req: Request, res: Response, next: NextFunction) => {
-        const uname: string = req.body.uname;
-        const pass: string = req.body.pass;
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    .post("/u", (req: Request, res: Response, next: NextFunction) => {
+        const { uname, pass } = LoginSchema.parse(req.body);
         if (!uname || !pass) {
             next({
                 status: 400,
@@ -67,22 +60,12 @@ router
         }
         unregister(uname, pass, req.n4jDriver).then(() => {
             res.sendStatus(200);
-        }).catch((e: any) => {
+        }).catch((e: unknown) => {
             next(e);
             return;
         })
     });
 
-type UserInfo = {
-    uname: string,
-    email?: string,
-    pass: string,
-    name: string,
-    description?: string,
-    role: number,
-    active: boolean,
-    creationDateTime: string
-}
 
 async function register(
     userInfo: UserInfo,
@@ -102,7 +85,7 @@ async function register(
         throw {
             status: 400,
             message: `uname ${userInfo.uname} already registered.`
-        };
+        } as IErrorWithStatus;
     }
 
     // Register user info with login DB and Neo4j DB
@@ -145,13 +128,13 @@ async function unregister(uname: string, pass: string, n4jDriver: Driver): Promi
             throw {
                 status: 400,
                 message: `uname ${uname} not registered.`
-            };
+            } as IErrorWithStatus;
         }
         if (!(bcrypt.compareSync(pass, result.pw))) {
             throw {
                 status: 401,
                 message: `Bad password for ${uname}.`
-            };
+            } as IErrorWithStatus;
         }
     }
 
