@@ -18,16 +18,16 @@ export const router = Router()
 interface JWTPayload {
     uname: string,
     roles?: number
-};
+}
 
 router
     .use("/", requireValidToken)
-    .get("/", (req: Request, res: Response, next: NextFunction) => {
+    .get("/", (req: Request, res: Response) => {
         res.send("Token is valid!");
     })
 
 export function generateAccessToken(payload: JWTPayload, subject?: string) : string {
-    var options: jwt.SignOptions = {
+    const options: jwt.SignOptions = {
         expiresIn: TOKEN_MAX_AGE ?? '1800s',
         issuer: TOKEN_ISSUER,
     }
@@ -38,14 +38,15 @@ export function generateAccessToken(payload: JWTPayload, subject?: string) : str
 }
 
 export function requireValidToken(req: Request, res: Response, next: NextFunction) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split(' ')[1];
     const options = {
         maxAge: TOKEN_MAX_AGE ?? '1800s'
     }
 
     if (token == null) {
-        return res.redirect(401, '/login');
+        res.redirect(401, '/login');
+        return;
     }
 
     try {
