@@ -42,7 +42,7 @@ if (!await localNeo4JDriver.establishConnection(neo4jMaxRetries)) {
 
 // Middleware
 app.use(logger());
-app.use(Neo4jMiddleware(localNeo4JDriver!));
+app.use(Neo4jMiddleware(localNeo4JDriver));
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -54,5 +54,5 @@ app.use("/", router);
 app.use(ErrorHandler);
 
 app.listen(port, () => {
-    console.log(`[server]: Server is running at ${ORIGIN}:${port}`);
+    console.log(`[server]: Server is running at ${ORIGIN}:${port.toString()}`);
 });

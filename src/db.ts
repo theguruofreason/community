@@ -20,11 +20,10 @@ import { pino } from "pino";
 const log = pino();
 
 export function getLoginDb(): Promise<Database> {
-    const result = open({
+    return open({
         filename: LOGIN_DB_URI,
         driver: sqlite3.cached.Database,
     });
-    return result;
 }
 
 export class Neo4jDriver {
@@ -42,9 +41,9 @@ export class Neo4jDriver {
         );
     }
 
-    async establishConnection(maxRetries: number = 10, retryDelayms: number = 1000): Promise<boolean> {
-        let retries: number = 0;
-        let connectionEstablished: boolean = false;
+    async establishConnection(maxRetries = 10): Promise<boolean> {
+        let retries = 0;
+        let connectionEstablished = false;
         while (retries <= maxRetries) {
             connectionEstablished = await this.driver.getServerInfo().then((serverInfo) => {
                 log.info("Local Neo4J connection established!");
@@ -52,14 +51,14 @@ export class Neo4jDriver {
                 this._serverInfo = serverInfo;
                 return true;
             })
-            .catch((err) => {
+            .catch((err: unknown) => {
                 log.error(err)
-                log.warn(`Neo4J connection failed...\n${maxRetries - retries} retries remaining...`)
+                log.warn(`Neo4J connection failed...\n${(maxRetries - retries).toString()} retries remaining...`)
                 retries++;
                 return false;
             });
             if (connectionEstablished) { break; }
-        };
+        }
         return connectionEstablished;
     }
 
@@ -79,11 +78,11 @@ export class Neo4jDriver {
 export function Neo4jMiddleware(neo4jDriver: Neo4jDriver) {
     return (req: Request, _: Response, next: NextFunction) => {
         try {
-            req.n4jDriver = neo4jDriver.getDriver()!;
+            req.n4jDriver = neo4jDriver.getDriver();
         } catch (e) {
             log.error(e);
             process.exit(1);
         }
         next();
     }
-};
+}
