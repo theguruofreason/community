@@ -23,6 +23,21 @@ export type Role =
     "MODERATOR" |
     "ADMIN";
 
+export type EntityLabels = 
+    "Person" |
+    "Place" |
+    "Thing" |
+    "Business" |
+    "Group" |
+    "Event";
+
+export type PostType =
+    "TextPost" |
+    "ImagePost" |
+    "AudioPost" |
+    "VideoPost" |
+    "LinkPost";
+
 // Interfaces 
 export interface Entity {
     __typename: string;
@@ -128,4 +143,20 @@ export interface EstablishRelationshipInput {
     objectId: UUID;
     relationshipType: RelationshipType;
     descriptor?: string;
+}
+
+export interface EntityLookupArgs {
+    id?: string;
+    name?: string;
+    labels?: EntityLabels[];
+    active?: boolean;
+    before?: Date;
+    after?: Date;
+}
+
+export interface PostsByAuthorIdArgs {
+    authorId: string;
+    before?: Date;
+    after?: Date;
+    types?: PostType[];
 }
