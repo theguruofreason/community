@@ -160,3 +160,20 @@ export interface PostsByAuthorIdArgs {
     after?: Date;
     types?: PostType[];
 }
+
+export const ENTITY_LABELS: string[] = [
+    "Person",
+    "Place",
+    "Thing",
+    "Business",
+    "Group",
+    "Event"
+]
+
+export const POST_TYPES: string[] = [
+    "TextPost",
+    "ImagePost",
+    "AudioPost",
+    "VideoPost",
+    "LinkPost"
+]

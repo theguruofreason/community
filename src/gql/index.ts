@@ -16,26 +16,10 @@ import path from "path";
 import { ManagedTransaction, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
-import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType } from "./types.js";
+import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, POST_TYPES, ENTITY_LABELS } from "./types.js";
 import { UUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const ENTITY_LABELS: string[] = [
-    "Person",
-    "Place",
-    "Thing",
-    "Business",
-    "Group",
-    "Event"
-]
-
-const POST_TYPES: string[] = [
-    "TextPost",
-    "ImagePost",
-    "AudioPost",
-    "VideoPost",
-    "LinkPost"
-]
 
 function createPropertiesString(args: object): string {
     return Object.keys(args).map((key) => `${key}: $${key}`).join(", ");
