@@ -22,6 +22,7 @@ const log = pino();
 export function getLoginDb(): Promise<Database> {
     return open({
         filename: LOGIN_DB_URI,
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         driver: sqlite3.cached.Database,
     });
 }
