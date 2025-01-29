@@ -9,7 +9,6 @@ Community is distributed in the hope that it will be useful, but WITHOUT ANY WAR
 
 You should have received a copy of the GNU General Public License along with Community. If not, see <https://www.gnu.org/licenses/>. 
 */
-import { Logger } from "pino";
 import { Driver } from "neo4j-driver";
 declare global {
     namespace NodeJS {
@@ -28,6 +27,7 @@ declare global {
             TOKEN_MAX_AGE?: string;
             TOKEN_ISSUER: string;
             RUNTIME_ENVIRONMENT: string;
+            PASSWORD_MIN_LENGTH: string;
         }
     }
     namespace Express {
