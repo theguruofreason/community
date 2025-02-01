@@ -19,7 +19,8 @@ import { fileURLToPath } from "url";
 import { generateAccessToken } from "auth";
 import { Database } from "sqlite";
 import { IErrorWithStatus } from "errors";
-import { LoginRequestBody, Roles } from "./types.js";
+import { Roles } from "./types.js";
+import { loginRequestSchema } from "./zod.js";
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,7 +31,7 @@ router
     })
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     .post("/", async (req: Request, res: Response, next: NextFunction) => {
-        const { uname , pass }= req.body as LoginRequestBody;
+        const { uname, pass } = loginRequestSchema.parse(req.body);
         if (!uname || !pass) {
             next({
                 status: 400,
@@ -65,7 +66,7 @@ router
 
 async function validateLogin(uname: string, pass: string, db: Database): Promise<void> {
     const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-    const result = await db.get(stmt, {
+    const result: LoginDBEntry = await db.get(stmt, {
         ":uname": uname,
     });
     if (!result) {
