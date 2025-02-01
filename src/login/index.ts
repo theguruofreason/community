@@ -19,7 +19,7 @@ import { fileURLToPath } from "url";
 import { generateAccessToken } from "auth";
 import { Database } from "sqlite";
 import { IErrorWithStatus } from "errors";
-import { Roles } from "./types.js";
+import { LoginDBEntry, Roles } from "./types.js";
 import { loginRequestSchema } from "./zod.js";
 
 
@@ -29,32 +29,28 @@ router
     .get("/", (_, res: Response) => {
         res.sendFile(path.join(__dirname, "index.html"));
     })
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    .post("/", async (req: Request, res: Response, next: NextFunction) => {
-        const { uname, pass } = loginRequestSchema.parse(req.body);
-        if (!uname || !pass) {
-            next({
-                status: 400,
-                message: `uname and pass required`
-            });
-            return;
-        }
+    .post("/", (req: Request, res: Response, next: NextFunction) => {
         try {
-            const db = await getLoginDb();
-            await validateLogin(uname, pass, db);
-            req.log.info(`Successful login!`);
-            const stmt = `SELECT roles FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-            const roles: Roles = await db.get(stmt, {
-                ":uname": uname
-            }) ?? 0;
-            const jwt: string = generateAccessToken({uname: uname, roles: roles});
-            res.json({
-                token: jwt
-            })
-            return;
+            const { uname, pass } = loginRequestSchema.parse(req.body);
+            getLoginDb().then(db => {
+                validateLogin(uname, pass, db);
+                req.log.info(`Successful login!`);
+                const stmt = `SELECT roles FROM ${LOGIN_TABLE} WHERE uname=:uname`;
+                db.get<{ roles: Roles }>(stmt, {
+                    ":uname": uname
+                }).then(result => {
+                    const jwt: string = generateAccessToken({uname: uname, roles: result ? result.roles : 0});
+                    res.json({
+                        token: jwt
+                    })
+                }).catch((error: unknown) =>{
+                    throw error;
+                });
+            }).catch((error: unknown) => {
+                throw error
+            });
         } catch (e: unknown) {
             next(e);
-            return;
         }
     })
     .post("/out", (req: Request, res: Response, next: NextFunction) => {
@@ -64,21 +60,24 @@ router
         return;
     });
 
-async function validateLogin(uname: string, pass: string, db: Database): Promise<void> {
+function validateLogin(uname: string, pass: string, db: Database): void {
     const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-    const result: LoginDBEntry = await db.get(stmt, {
+    db.get<LoginDBEntry>(stmt, {
         ":uname": uname,
+    }).then(result => {
+        if (!result) {
+            throw {
+                status: 401,
+                message: `Username ${uname} not registered...`,
+            } as IErrorWithStatus;
+        }
+        if (!bcrypt.compareSync(pass, result.pw)) {
+            throw {
+                status: 401,
+                message: `Incorrect password.`
+            } as IErrorWithStatus; 
+        }
+    }).catch((error: unknown) => {
+        throw error;
     });
-    if (!result) {
-        throw {
-            status: 401,
-            message: `Username ${uname} not registered...`,
-        } as IErrorWithStatus;
-    }
-    if (!bcrypt.compareSync(pass, result.pw)) {
-        throw {
-            status: 401,
-            message: `Incorrect password.`
-        } as IErrorWithStatus; 
-    }
 }
