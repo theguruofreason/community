@@ -16,7 +16,7 @@ import path from "path";
 import { ManagedTransaction, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
-import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, POST_TYPES, ENTITY_LABELS } from "./types.js";
+import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, POST_TYPES, ENTITY_LABELS, AuthorTextPost } from "./types.js";
 import { UUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -120,9 +120,8 @@ function getPostsByAuthorId(authorId: string, args: PostsByAuthorIdArgs, session
     );
 }
 
-function authorTextPost(args: any, session: Session) {
+function authorTextPost(args: AuthorTextPost, session: Session) {
     args.creationDateTime = new Date().getTime();
-    if (!("deactivationDateTime" in args)) args.deactivationDateTime = null;
     if (!("activationDateTime" in args)) args.activationDateTime = args.creationDateTime;
     const cypher = `MATCH (p {id: $authorId})
     CREATE (tp:Post:TextPost {activationDateTime: $activationDateTime, deactivationDateTime: $deactivationDateTime, visibility: $visibility, content: $content})

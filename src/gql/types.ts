@@ -1,4 +1,5 @@
 import { UUID } from "crypto";
+import { z } from "zod";
 
 // String Literals
 
@@ -177,3 +178,13 @@ export const POST_TYPES: string[] = [
     "VideoPost",
     "LinkPost"
 ]
+
+export const authorTextPostSchema = z.object({
+    deactivationDateTime: z.string().datetime().optional(),
+    activationDateTime: z.number().optional(),
+    content: z.string()
+})
+
+export type AuthorTextPost = z.infer<typeof authorTextPostSchema> & {
+    creationDateTime: number
+}
