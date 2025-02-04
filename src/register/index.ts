@@ -78,7 +78,7 @@ async function register(
 
     // Check if user already registered
     const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-    const result = await loginDB.get(stmt, {
+    const result = await loginDB.get<UserInfo>(stmt, {
         ":uname": userInfo.uname,
     });
     if (result) {
@@ -121,7 +121,7 @@ async function unregister(uname: string, pass: string, n4jDriver: Driver): Promi
     // Check if user is registered
     {
         const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-        const result = await db.get(stmt, {
+        const result = await db.get<UserInfo>(stmt, {
             ":uname": uname,
         });
         if (!result) {
@@ -130,7 +130,7 @@ async function unregister(uname: string, pass: string, n4jDriver: Driver): Promi
                 message: `uname ${uname} not registered.`
             } as IErrorWithStatus;
         }
-        if (!(bcrypt.compareSync(pass, result.pw))) {
+        if (!(bcrypt.compareSync(pass, result.pass))) {
             throw {
                 status: 401,
                 message: `Bad password for ${uname}.`
