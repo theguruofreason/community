@@ -81,9 +81,25 @@ export interface Event extends Entity {
 }
 
 export interface Post {
+    creationDateTime: Date;
     activationDateTime?: Date;
     deactivationDateTime?: Date;
     visibility: Visibility;
+}
+
+export interface TextPost extends Post {
+    content: string;
+}
+
+export interface TextPostQueryResult {
+    tp: {
+        properties: TextPost;
+    };
+    r: {
+        properties: {
+            creationDateTime: Date;
+        }
+    }
 }
 
 export interface Person extends Entity {

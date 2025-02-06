@@ -13,10 +13,10 @@ import { fileURLToPath } from "url";
 import { createHandler } from "graphql-http/lib/use/express";
 import { readFileSync } from 'fs';
 import path from "path";
-import { ManagedTransaction, Session } from "neo4j-driver";
+import { ManagedTransaction, QueryResult, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
-import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, POST_TYPES, ENTITY_LABELS, AuthorTextPost } from "./types.js";
+import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, POST_TYPES, ENTITY_LABELS, AuthorTextPost, TextPost, TextPostQueryResult } from "./types.js";
 import { UUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -108,32 +108,32 @@ function getPostsByAuthorId(authorId: string, args: PostsByAuthorIdArgs, session
         tx.run(cypher, {...args, authorId})).then((res) => {
             if (res.records.length < 1) return null;
             return res.records.flatMap((record) => {
-                const {post, r} = record.toObject();
+                const {post} = record.toObject();
                 return {
                     ...post.properties,
                     visibility: Array.isArray(post.properties.visibility) ? post.properties.visibility : [post.properties.visibility],
                     __typename: post.labels.find((label) => POST_TYPES.includes(label)),
-                    creationDateTime: r.properties.creationDateTime,
+                    creationDateTime: post.creationDateTime,
                 }
             }) as Post[];
         }
     );
 }
 
-function authorTextPost(args: AuthorTextPost, session: Session) {
+function authorTextPost(args: AuthorTextPost, session: Session): Promise<TextPost> {
     args.creationDateTime = new Date().getTime();
     if (!("activationDateTime" in args)) args.activationDateTime = args.creationDateTime;
     const cypher = `MATCH (p {id: $authorId})
     CREATE (tp:Post:TextPost {activationDateTime: $activationDateTime, deactivationDateTime: $deactivationDateTime, visibility: $visibility, content: $content})
     CREATE (p)-[r:AUTHORED {creationDateTime: $creationDateTime}]->(tp)
     RETURN tp, r;`
-    return session.executeWrite((tx: ManagedTransaction) =>
+    return session.executeWrite<QueryResult<TextPostQueryResult>>((tx: ManagedTransaction) =>
         tx.run(cypher, args)).then((res) => {
             const {tp, r} = res.records[0].toObject();
             return {
                 ...tp.properties,
                 creationDateTime: r.properties.creationDateTime,
-            };
+            } as TextPost;
         }
     );
 }
