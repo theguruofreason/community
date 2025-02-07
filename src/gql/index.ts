@@ -16,7 +16,7 @@ import path from "path";
 import { ManagedTransaction, QueryResult, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
-import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, POST_TYPES, ENTITY_LABELS, AuthorTextPost, TextPost, TextPostQueryResult } from "./types.js";
+import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, POST_TYPES, ENTITY_LABELS, AuthorTextPost, TextPost, TextPostQueryResult, RelationshipQueryResult } from "./types.js";
 import { UUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -143,7 +143,7 @@ function establishRelationship(args: EstablishRelationshipInput, session: Sessio
     const descriptionString: string = args.descriptor ? `{descriptor: $descriptor}` : "";
     const relationshipString = `MERGE (subject)-[r:${args.relationshipType} ${descriptionString}]->(object)`;
     const cypher = `${matchString} ${relationshipString} RETURN subject, object, r;`;
-    return session.executeWrite((tx: ManagedTransaction) =>
+    return session.executeWrite<QueryResult<RelationshipQueryResult>>((tx: ManagedTransaction) =>
         tx.run(cypher, args)).then((res) => {
             const {subject, object, r} = res.records[0].toObject();
             return {
@@ -156,7 +156,7 @@ function establishRelationship(args: EstablishRelationshipInput, session: Sessio
                     __typename: object.labels.find((label) => ENTITY_LABELS.includes(label))
                 },
                 descriptor: r.properties.descriptor
-            };
+            } as Relationship;
         }
     );
 }

@@ -154,6 +154,20 @@ export interface Relationship {
     descriptor?: string;
 }
 
+export interface RelationshipQueryResult {
+    subject: {
+        properties: Entity;
+        labels: EntityLabels[];
+    };
+    object: {
+        properties: Entity;
+        labels: EntityLabels[];
+    };
+    r: {
+        properties: Relationship;
+    };
+}
+
 // Inputs
 export interface EstablishRelationshipInput {
     subjectId: UUID;
