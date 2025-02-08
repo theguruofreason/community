@@ -123,6 +123,13 @@ export interface Person extends Entity {
     role: Role;
 }
 
+export interface EntityQueryResult {
+    e: {
+        properties: Entity;
+        labels: EntityLabels[];
+    };
+}
+
 type Owner = Person | Business | Group;
 
 export interface Thing extends Entity {

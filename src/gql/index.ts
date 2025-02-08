@@ -16,7 +16,7 @@ import path from "path";
 import { ManagedTransaction, QueryResult, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
-import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, POST_TYPES, ENTITY_LABELS, AuthorTextPost, TextPost, TextPostQueryResult, RelationshipQueryResult } from "./types.js";
+import { Entity, EntityLookupArgs, EstablishRelationshipInput, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, POST_TYPES, ENTITY_LABELS, AuthorTextPost, TextPost, TextPostQueryResult, RelationshipQueryResult, EntityQueryResult } from "./types.js";
 import { UUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -73,9 +73,9 @@ function lookupEntities(args: EntityLookupArgs, session: Session): Promise<Entit
     }
     const whereString: string = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const cypher = `${matchString} ${whereString} RETURN e`;
-    return session.executeRead((tx: ManagedTransaction) => 
+    return session.executeRead<QueryResult<EntityQueryResult>>((tx: ManagedTransaction) => 
         tx.run(cypher, args)).then((res) => {
-            if (res.records.length < 1) return null;
+            if (res.records.length < 1) return [];
             return res.records.flatMap((record) => {
                 const {e} = record.toObject();
                 return {
