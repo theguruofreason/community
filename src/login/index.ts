@@ -55,7 +55,7 @@ router
     })
     .post("/out", (req: Request, res: Response, next: NextFunction) => {
         const authHeader: string | undefined = req.headers.authorization;
-        const token: string = authHeader?.split(' ')[1];
+        const token: string = authHeader?.split(' ')[1] ?? "";
         res.status(200);
         return;
     });

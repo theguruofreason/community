@@ -84,7 +84,7 @@ union PostAuthor = Person | Business | Group | Event
 type Person implements Entity {
     id: ID!
     name: String!
-    people(relationshipTypes: [relationshipType!], descriptorSearch: String): [Person!]
+    people(relationshipTypes: [RelationshipType!], descriptorSearch: String): [Person!]
     things: [Thing!]
     jobs: [Business!]
     affiliations: [Group!]
@@ -165,6 +165,7 @@ type Event implements Entity {
 }
 
 enum Visibility {
+    PUBLIC
     FAMILY
     FRIENDS
     FOLLOWERS

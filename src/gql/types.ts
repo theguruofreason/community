@@ -13,6 +13,7 @@ export type RelationshipType =
     "AFFILIATION";
 
 export type Visibility =
+    "PUBLIC" |
     "FAMILY" |
     "FRIENDS" |
     "FOLLOWERS" |
@@ -24,7 +25,7 @@ export type Role =
     "MODERATOR" |
     "ADMIN";
 
-export type EntityLabels = 
+export type EntityLabel = 
     "Person" |
     "Place" |
     "Thing" |
@@ -84,7 +85,8 @@ export interface Post {
     creationDateTime: Date;
     activationDateTime?: Date;
     deactivationDateTime?: Date;
-    visibility: Visibility;
+    visibility: [Visibility];
+    _typename: PostType
 }
 
 export interface TextPost extends Post {
@@ -103,12 +105,7 @@ export interface TextPostQueryResult {
 }
 
 export interface Person extends Entity {
-    familyOut?: Person[];
-    familyIn?: Person[];
-    following?: Person[];
-    followedBy?: Person[];
-    friendsOut?: Person[];
-    friendsIn?: Person[];
+    people?: Person[];
     things?: Thing[];
     jobs?: Business[];
     affiliations?: Group[];
@@ -121,13 +118,6 @@ export interface Person extends Entity {
     contactInformation: ContactInformation;
     posts?: Post[];
     role: Role;
-}
-
-export interface EntityQueryResult {
-    e: {
-        properties: Entity;
-        labels: EntityLabels[];
-    };
 }
 
 type Owner = Person | Business | Group;
@@ -156,27 +146,14 @@ export interface Group extends Entity {
 }
 
 export interface Relationship {
-    subject: Entity;
-    object: Entity;
+    subject: Entity & {__typename: EntityLabel};
+    object: Entity & {__typename: EntityLabel};
     descriptor?: string;
 }
 
-export interface RelationshipQueryResult {
-    subject: {
-        properties: Entity;
-        labels: EntityLabels[];
-    };
-    object: {
-        properties: Entity;
-        labels: EntityLabels[];
-    };
-    r: {
-        properties: Relationship;
-    };
-}
 
 // Inputs
-export interface EstablishRelationshipInput {
+export interface EstablishRelationshipArgs {
     subjectId: UUID;
     objectId: UUID;
     relationshipType: RelationshipType;
@@ -186,7 +163,7 @@ export interface EstablishRelationshipInput {
 export interface EntityLookupArgs {
     id?: string;
     name?: string;
-    labels?: EntityLabels[];
+    labels?: EntityLabel[];
     active?: boolean;
     before?: Date;
     after?: Date;
@@ -219,9 +196,10 @@ export const POST_TYPES: string[] = [
 export const authorTextPostSchema = z.object({
     deactivationDateTime: z.string().datetime().optional(),
     activationDateTime: z.number().optional(),
-    content: z.string()
+    content: z.string(),
+    visibility: z.custom<Visibility>().array()
 })
 
-export type AuthorTextPost = z.infer<typeof authorTextPostSchema> & {
+export type AuthorTextPostArgs = z.infer<typeof authorTextPostSchema> & {
     creationDateTime: number
 }
