@@ -16,7 +16,7 @@ import path from "path";
 import { ManagedTransaction, QueryResult, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
-import { Entity, EntityLookupArgs, EstablishRelationshipArgs, Person, Post, PostsByAuthorIdArgs, Relationship, RelationshipType, AuthorTextPostArgs, TextPost, ENTITY_LABELS, EntityLabel } from "./types.js";
+import { Entity, EntityLookupArgs, EstablishRelationshipArgs, Person, Post, PostsByAuthorIdArgs, Relationship, AuthorTextPostArgs, TextPost, ENTITY_LABELS, EntityLabel, LookupRelatedEntitiesArgs } from "./types.js";
 import { UUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,13 +38,13 @@ function lookupPeople(args: object, session: Session) : Promise<Person[]> {
     });
 }
 
-function lookupRelatedEntities(primaryId: UUID, session: Session, relationshipTypes?: RelationshipType[], descriptorSearch?: string) : Promise<Entity[]> {
+function lookupRelatedEntities(primaryId: UUID, session: Session, args: LookupRelatedEntitiesArgs) : Promise<Entity[]> {
+    const {relationshipTypes, descriptorSearch} = args;
     const [p, r, s] = ['p' as const, 'r' as const, 's' as const];
     const relationshipTypesString: string = relationshipTypes ? ":" + relationshipTypes.join("|") : "";
-    const cypher = `MATCH (${p} {id: $primaryId})-[${r}${relationshipTypesString}]-(${s})`;
-    if (descriptorSearch) {
-        cypher.concat(` WHERE ${r}.descriptor =~ '${descriptorSearch}`);
-    }
+    const match = `MATCH (${p} {id: $primaryId})-[${r}${relationshipTypesString}]-(${s})`;
+    const descriptor = descriptorSearch ? `WHERE ${r}.descriptor =~ '${descriptorSearch}'` : "";
+    const cypher = `${match} ${descriptor} RETURN ${s}`;
     return session.executeRead<Entity[]>(async (tx: ManagedTransaction) => {
         const result: QueryResult<{[p]: EntityResult; [r]: {properties: Relationship}; [s]: {properties: Entity}}> = await tx.run(cypher, { primaryId: primaryId });
         return result.records.map(record => record.get(s).properties);
@@ -150,8 +150,8 @@ const resolvers = {
         establishRelationship: (root, args: EstablishRelationshipArgs, context: Context, info) => establishRelationship(args, context.n4jDriver.session())
     },
     Person: {
-        posts: (author: { id: string; }, args: PostsByAuthorIdArgs, context: Context, info) => getPostsByAuthorId(author.id, args, context.n4jDriver.session()),
-        // familyOut: (primary, args, context, info) => lookupPeople
+        posts: (author: { id: UUID; }, args: PostsByAuthorIdArgs, context: Context, info) => getPostsByAuthorId(author.id, args, context.n4jDriver.session()),
+        people: (primary: { id: UUID; }, args: LookupRelatedEntitiesArgs, context: Context, info) => lookupRelatedEntities(primary.id, context.n4jDriver.session(), args)
     }
 }
 

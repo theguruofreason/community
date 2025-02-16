@@ -169,6 +169,11 @@ export interface EntityLookupArgs {
     after?: Date;
 }
 
+export interface LookupRelatedEntitiesArgs {
+    relationshipTypes?: RelationshipType[],
+    descriptorSearch?: string
+}
+
 export interface PostsByAuthorIdArgs {
     authorId: string;
     before?: Date;
