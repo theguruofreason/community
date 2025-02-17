@@ -120,6 +120,12 @@ export interface Person extends Entity {
     role: Role;
 }
 
+export interface EntityAndRelationship {
+    entity: Entity & {__typename: EntityLabel};
+    relationship: Relationship;
+    direction: Direction;
+}
+
 type Owner = Person | Business | Group;
 
 export interface Thing extends Entity {
@@ -146,9 +152,12 @@ export interface Group extends Entity {
 }
 
 export interface Relationship {
+    descriptor?: string;
+}
+
+export interface RelationshipPath extends Relationship {
     subject: Entity & {__typename: EntityLabel};
     object: Entity & {__typename: EntityLabel};
-    descriptor?: string;
 }
 
 
@@ -169,9 +178,12 @@ export interface EntityLookupArgs {
     after?: Date;
 }
 
+export type Direction = "OUT" | "IN" | "BIDIRECTIONAL";
+
 export interface LookupRelatedEntitiesArgs {
     relationshipTypes?: RelationshipType[],
-    descriptorSearch?: string
+    descriptorSearch?: string,
+    direction: Direction
 }
 
 export interface PostsByAuthorIdArgs {

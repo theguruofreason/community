@@ -16,7 +16,7 @@ import path from "path";
 import { ManagedTransaction, QueryResult, Session } from "neo4j-driver";
 import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
-import { Entity, EntityLookupArgs, EstablishRelationshipArgs, Person, Post, PostsByAuthorIdArgs, Relationship, AuthorTextPostArgs, TextPost, ENTITY_LABELS, EntityLabel, LookupRelatedEntitiesArgs } from "./types.js";
+import { Entity, EntityLookupArgs, EstablishRelationshipArgs, Person, Post, PostsByAuthorIdArgs, Relationship, AuthorTextPostArgs, TextPost, ENTITY_LABELS, EntityLabel, LookupRelatedEntitiesArgs, EntityAndRelationship, RelationshipPath } from "./types.js";
 import { UUID } from "crypto";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,16 +38,33 @@ function lookupPeople(args: object, session: Session) : Promise<Person[]> {
     });
 }
 
-function lookupRelatedEntities(primaryId: UUID, session: Session, args: LookupRelatedEntitiesArgs) : Promise<Entity[]> {
-    const {relationshipTypes, descriptorSearch} = args;
-    const [p, r, s] = ['p' as const, 'r' as const, 's' as const];
+
+function lookupRelatedEntities(primaryId: UUID, session: Session, args: LookupRelatedEntitiesArgs) : Promise<EntityAndRelationship[]> {
+    const {relationshipTypes, descriptorSearch, direction = "BIDIRECTIONAL"} = args;
+    const [p, r, s, relationshipOut] = ['p' as const, 'r' as const, 's' as const, 'relOut' as const];
     const relationshipTypesString: string = relationshipTypes ? ":" + relationshipTypes.join("|") : "";
-    const match = `MATCH (${p} {id: $primaryId})-[${r}${relationshipTypesString}]-(${s})`;
-    const descriptor = descriptorSearch ? `WHERE ${r}.descriptor =~ '${descriptorSearch}'` : "";
-    const cypher = `${match} ${descriptor} RETURN ${s}`;
-    return session.executeRead<Entity[]>(async (tx: ManagedTransaction) => {
-        const result: QueryResult<{[p]: EntityResult; [r]: {properties: Relationship}; [s]: {properties: Entity}}> = await tx.run(cypher, { primaryId: primaryId });
-        return result.records.map(record => record.get(s).properties);
+    const matchString = `MATCH (${p} {id: $primaryId})-[${r}${relationshipTypesString}]-(${s})`;
+    const descriptorString = descriptorSearch ? `WHERE ${r}.descriptor =~ '${descriptorSearch}' `: "";
+    const cypher = `${matchString} ${descriptorString} RETURN (endNode(${r}) = ${s}) as ${relationshipOut}, ${r}, ${s}`;
+    return session.executeRead<EntityAndRelationship[]>(async (tx: ManagedTransaction) => {
+        const result: QueryResult<{[relationshipOut]: boolean, [r]: {properties: Relationship}; [s]: EntityResult}> = await tx.run(cypher, { primaryId: primaryId });
+        return result.records.filter(record => {
+            if (direction === "OUT") return record.get(relationshipOut);
+            if (direction === "IN") return !record.get(relationshipOut);
+            return true;
+        })
+        .map(record => {
+                return {
+                    entity: {
+                        ...record.get(s).properties,
+                        __typename: record.get(s).labels.find(label => ENTITY_LABELS.includes(label)) as EntityLabel
+                    },
+                    relationship: {
+                        ...record.get(r).properties
+                    },
+                    direction: record.get(relationshipOut) ? "OUT" : "IN"
+            }
+        });
     });
 }
 
@@ -112,14 +129,14 @@ function authorTextPost(args: AuthorTextPostArgs, session: Session): Promise<Tex
     });
 }
 
-function establishRelationship(args: EstablishRelationshipArgs, session: Session) : Promise<Relationship> {
+function establishRelationship(args: EstablishRelationshipArgs, session: Session) : Promise<RelationshipPath> {
     const [s, r, o] = ['s' as const, 'r' as const, 'o' as const];
     const matchString = `MATCH (${s} {id: $subjectId}) MATCH (${o} {id: $objectId})`;
     const descriptionString: string = args.descriptor ? `{descriptor: $descriptor}` : "";
     const relationshipString = `MERGE (${s})-[${r}:${args.relationshipType} ${descriptionString}]->(${o})`;
     const cypher = `${matchString} ${relationshipString} RETURN ${s}, ${o}, ${r};`;
-    return session.executeWrite<Relationship>(async (tx: ManagedTransaction) => {
-        const result: QueryResult<{[s]: EntityResult; [r]: {properties: Relationship}; [o]: EntityResult}> = await tx.run(cypher, args);
+    return session.executeWrite<RelationshipPath>(async (tx: ManagedTransaction) => {
+        const result: QueryResult<{[s]: EntityResult; [r]: {properties: RelationshipPath}; [o]: EntityResult}> = await tx.run(cypher, args);
         const subject = result.records[0].get(s);
         const object = result.records[0].get(o);
         const relationship = result.records[0].get(r);

@@ -47,6 +47,10 @@ enum PostType {
 }
 
 type Relationship {
+    descriptor: String
+}
+
+type RelationshipPath {
     subject: Entity!
     object: Entity!
     descriptor: String
@@ -81,10 +85,16 @@ union Owner = Person | Business | Group
 union GroupOrBusiness = Group | Business
 union PostAuthor = Person | Business | Group | Event
 
+enum Direction {
+    IN
+    OUT
+    BIDIRECTIONAL
+}
+
 type Person implements Entity {
     id: ID!
     name: String!
-    people(relationshipTypes: [RelationshipType!], descriptorSearch: String): [Person!]
+    people(relationshipTypes: [RelationshipType!], descriptorSearch: String, direction: Direction): [EntityAndRelationship!]
     things: [Thing!]
     jobs: [Business!]
     affiliations: [Group!]
@@ -97,6 +107,12 @@ type Person implements Entity {
     contactInformation: ContactInformation
     posts(types: [PostType], before: DateTime, after: DateTime): [Post!]!
     role: Role!
+}
+
+type EntityAndRelationship {
+    entity: Entity!,
+    relationship: Relationship!
+    direction: Direction!
 }
 
 type Place implements Entity {
