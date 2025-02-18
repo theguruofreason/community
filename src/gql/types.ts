@@ -82,11 +82,12 @@ export interface Event extends Entity {
 }
 
 export interface Post {
+    id: UUID;
     creationDateTime: Date;
     activationDateTime?: Date;
     deactivationDateTime?: Date;
     visibility: [Visibility];
-    _typename: PostType
+    __typename: PostType;
 }
 
 export interface TextPost extends Post {
@@ -214,7 +215,8 @@ export const authorTextPostSchema = z.object({
     deactivationDateTime: z.string().datetime().optional(),
     activationDateTime: z.number().optional(),
     content: z.string(),
-    visibility: z.custom<Visibility>().array()
+    visibility: z.custom<Visibility>().array(),
+    replyOf: z.string().uuid().optional()
 })
 
 export type AuthorTextPostArgs = z.infer<typeof authorTextPostSchema> & {

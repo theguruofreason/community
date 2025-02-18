@@ -18,6 +18,7 @@ import { GraphQLSchema } from "graphql/type";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import { Entity, EntityLookupArgs, EstablishRelationshipArgs, Person, Post, PostsByAuthorIdArgs, Relationship, AuthorTextPostArgs, TextPost, ENTITY_LABELS, EntityLabel, LookupRelatedEntitiesArgs, EntityAndRelationship, RelationshipPath } from "./types.js";
 import { UUID } from "crypto";
+import { v4 as uuidv4 } from "uuid";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface EntityResult {
@@ -115,16 +116,30 @@ async function getPostsByAuthorId(authorId: string, args: PostsByAuthorIdArgs, s
     });
 }
 
+async function generateFreshPostUUID(session: Session, retry = 5): Promise<string | Error> {
+    if (retry === 0) {
+        console.error("Failed to generate post UUID!");
+        return new Error("Failed to generate post UUID!");
+    }
+    const uuid = uuidv4();
+    const foundPost: boolean = await session.executeRead(async (tx: ManagedTransaction) => {
+        return !!(await tx.run<Post>(`MATCH (p:Post) {id: $postId} RETURN p`)).records.length;
+    });
+    if (foundPost) return generateFreshPostUUID(session, retry - 1);
+    return uuid;
+}
+
 function authorTextPost(args: AuthorTextPostArgs, session: Session): Promise<TextPost> {
     const [p, r, tp] = ['p' as const, 'r' as const, 'tp' as const];
     args.creationDateTime = new Date().getTime();
+    const postId = generateFreshPostUUID(session);
     if (!("activationDateTime" in args)) args.activationDateTime = args.creationDateTime;
     const cypher = `MATCH (${p} {id: $authorId})
-    CREATE (${tp}:Post:TextPost {creationDateTime: $creationDateTime, activationDateTime: $activationDateTime, deactivationDateTime: $deactivationDateTime, visibility: $visibility, content: $content})
+    CREATE (${tp}:Post:TextPost {id: $postId, creationDateTime: $creationDateTime, activationDateTime: $activationDateTime, deactivationDateTime: $deactivationDateTime, visibility: $visibility, content: $content})
     CREATE (${p})-[${r}:AUTHORED]->(${tp})
     RETURN ${tp};`
     return session.executeWrite<TextPost>(async (tx: ManagedTransaction) => {
-        const result: QueryResult<{[tp]: {properties: TextPost}}> = await tx.run(cypher, args);
+        const result: QueryResult<{[tp]: {properties: TextPost}}> = await tx.run(cypher, {...args, postId: postId});
         return result.records[0].get(tp).properties;
     });
 }
