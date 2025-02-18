@@ -158,17 +158,17 @@ interface Context { n4jDriver: { session: () => Session; }; }
 
 const resolvers = {
     Query: {
-        people: (root, args: object, context: Context, info) => lookupPeople(args, context.n4jDriver.session()),
-        posts: (root, args: PostsByAuthorIdArgs, context: Context, info) => getPostsByAuthorId(args.authorId, args, context.n4jDriver.session()),
-        entities: (root, args: EntityLookupArgs, context: Context, info) => lookupEntities(args, context.n4jDriver.session())
+        people: (root, args: object, context: Context) => lookupPeople(args, context.n4jDriver.session()),
+        posts: (root, args: PostsByAuthorIdArgs, context: Context) => getPostsByAuthorId(args.authorId, args, context.n4jDriver.session()),
+        entities: (root, args: EntityLookupArgs, context: Context) => lookupEntities(args, context.n4jDriver.session())
     },
     Mutation: {
-        authorTextPost: (root, args: AuthorTextPostArgs, context: Context, info) => authorTextPost(args, context.n4jDriver.session()),
-        establishRelationship: (root, args: EstablishRelationshipArgs, context: Context, info) => establishRelationship(args, context.n4jDriver.session())
+        authorTextPost: (root, args: AuthorTextPostArgs, context: Context) => authorTextPost(args, context.n4jDriver.session()),
+        establishRelationship: (root, args: EstablishRelationshipArgs, context: Context) => establishRelationship(args, context.n4jDriver.session())
     },
     Person: {
-        posts: (author: { id: UUID; }, args: PostsByAuthorIdArgs, context: Context, info) => getPostsByAuthorId(author.id, args, context.n4jDriver.session()),
-        people: (primary: { id: UUID; }, args: LookupRelatedEntitiesArgs, context: Context, info) => lookupRelatedEntities(primary.id, context.n4jDriver.session(), args)
+        posts: (author: { id: UUID; }, args: PostsByAuthorIdArgs, context: Context) => getPostsByAuthorId(author.id, args, context.n4jDriver.session()),
+        people: (primary: { id: UUID; }, args: LookupRelatedEntitiesArgs, context: Context) => lookupRelatedEntities(primary.id, context.n4jDriver.session(), args)
     }
 }
 
