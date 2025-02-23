@@ -13,7 +13,6 @@ import { Driver } from "neo4j-driver";
 declare global {
     namespace NodeJS {
         interface ProcessEnv {
-            APOLLO_PORT?: string;
             LOGIN_DB_URI: string;
             LOGIN_TABLE: string;
             NEO4J_CONNECTION_MAX_RETRIES: string;
