@@ -13,19 +13,63 @@ import { Driver } from "neo4j-driver";
 declare global {
     namespace NodeJS {
         interface ProcessEnv {
+            /**
+             * The Unique Resource Identifier for the login database containing login information
+             */
             LOGIN_DB_URI: string;
+            /**
+             * The name of the table in the login database which contains login information
+             */
             LOGIN_TABLE: string;
+            /**
+             * The maximum number of times Community will retry connecting to the Neo4j instance
+             */
             NEO4J_CONNECTION_MAX_RETRIES: string;
+            /**
+             * The password for the Neo4j user used to control the Neo4j database
+             */
             NEO4J_PW: string;
+            /**
+             * The username for the Neo4j user used to control the Neo4j database
+             */
             NEO4J_UNAME: string;
+            /**
+             * The Unique Resource Identifier of the Neo4j database
+             */
             NEO4J_URI: string;
+            /**
+             * The domain of the current Community instance
+             */
             ORIGIN: string;
             PINO_LOG_LEVEL: string;
+            /**
+             * The port of the current Community instance
+             */
             PORT?: string;
+            /**
+             * The secret value for generating and verifying user session tokens
+             */
             TOKEN_SECRET: string;
+            /**
+             * The Initialization Vector for encrypting user session tokens
+             */
+            TOKEN_SECRET_IV: string;
+            /**
+             * The maximum age allowed of a user session token
+             */
             TOKEN_MAX_AGE?: string;
+            /**
+             * The issuing party for use session tokens
+             */
             TOKEN_ISSUER: string;
+            /**
+             * The environment which the current instance of Community is running in.
+             * Valid values are: "dev", "prod"
+             */
             RUNTIME_ENVIRONMENT: string;
+            /**
+             * The required minimum length of a password for a new registered user
+             */
             PASSWORD_MIN_LENGTH: string;
         }
     }
