@@ -7,7 +7,7 @@ export const UserInfoSchema = z.object({
     pass: z.string().min(+PASSWORD_MIN_LENGTH),
     name: z.string().nonempty(),
     description: z.string().optional(),
-    role: z.number(),
+    roles: z.number().array(),
     active: z.boolean(),
     creationDateTime: z.string().pipe(z.coerce.date()),
 });
@@ -20,3 +20,15 @@ export const LoginSchema = z.object({
 });
 
 export type Login = z.infer<typeof LoginSchema>;
+
+export type LoginDBSchema = {
+    id: number,
+    uname: string,
+    pass: string,
+}
+
+export type TokenData = {
+    uname: string,
+    pass: string,
+    roles: number[]
+}

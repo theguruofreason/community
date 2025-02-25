@@ -19,7 +19,7 @@ import { Statement } from "sqlite";
 import { fileURLToPath } from "url";
 import { v4 as uuidv4 } from "uuid";
 import { IErrorWithStatus } from "errors";
-import { LoginSchema, UserInfoSchema, UserInfo } from "./types.js";
+import { LoginSchema, UserInfoSchema, UserInfo } from "../share/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -67,10 +67,7 @@ router
     });
 
 
-async function register(
-    userInfo: UserInfo,
-    n4jDriver: Driver
-): Promise<void> {
+async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
     const loginDB = await getLoginDb();
     if (!loginDB) {
         throw new Error("Failed to load login db");
@@ -107,7 +104,7 @@ async function register(
         }),
         n4jDriver.executeQuery(
             `MERGE (p:Person {${userInfoParams.join(", ")}})`,
-            {...userInfo, ...{ id: uuidv4() }}
+            {...userInfo, id: uuidv4()}
         ),
     ]);
 }

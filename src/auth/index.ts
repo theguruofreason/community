@@ -9,16 +9,28 @@ Community is distributed in the hope that it will be useful, but WITHOUT ANY WAR
 
 You should have received a copy of the GNU General Public License along with Community. If not, see <https://www.gnu.org/licenses/>.
 */
-import jwt from "jsonwebtoken";
 import { NextFunction, Request, Response, Router } from "express";
-const { TOKEN_SECRET, TOKEN_MAX_AGE , TOKEN_ISSUER } = process.env;
+import crypto from "crypto";
+import { TokenData } from "share/types.js";
+const { TOKEN_SECRET, TOKEN_SECRET_IV, TOKEN_ISSUER, ENCRYPTION_METHOD } = process.env;
+
+if (!TOKEN_SECRET || !TOKEN_SECRET_IV || !ENCRYPTION_METHOD) {
+    throw new Error('Failed to load required env vars for token encryption.')
+}
+
+const key = crypto
+    .createHash('sha512')
+    .update(TOKEN_SECRET)
+    .digest('hex')
+    .substring(0,32);
+
+const encryptionIV = crypto
+    .createHash('sha512')
+    .update(TOKEN_SECRET_IV)
+    .digest('hex')
+    .substring(0,16)
 
 export const router = Router()
-
-interface JWTPayload {
-    uname: string,
-    roles?: number
-}
 
 router
     .use("/", requireValidToken)
@@ -26,25 +38,17 @@ router
         res.send("Token is valid!");
     })
 
-export function generateAccessToken(payload: JWTPayload, subject?: string) : string {
-    const options: jwt.SignOptions = {
-        expiresIn: TOKEN_MAX_AGE ?? '1800s',
-        issuer: TOKEN_ISSUER,
-    }
-    if (subject) {
-        options.subject = subject;
-    }
-    return jwt.sign(payload, TOKEN_SECRET, options);
+export function generateToken({uname, pass, roles}: TokenData) : string {
+    const cipher = crypto.createCipheriv(ENCRYPTION_METHOD, key, encryptionIV);
+    const data = [uname, pass, roles].join(';');
+    return  Buffer.from(
+        cipher.update(data, 'utf8', 'hex') + cipher.final('hex')
+    ).toString('base64');
 }
 
-export function requireValidToken(req: Request, res: Response, next: NextFunction) {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.split(' ')[1];
-    const options = {
-        maxAge: TOKEN_MAX_AGE ?? '1800s'
-    }
-
-    if (token == null) {
+export function requireValidToken(req: Request, res: Response, next: NextFunction) : void {
+    const cookies = req.headers?.cookies;
+    if (!cookies) {
         res.redirect(401, '/login');
         return;
     }

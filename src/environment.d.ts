@@ -55,13 +55,10 @@ declare global {
              */
             TOKEN_SECRET_IV: string;
             /**
-             * The maximum age allowed of a user session token
-             */
-            TOKEN_MAX_AGE?: string;
-            /**
              * The issuing party for use session tokens
              */
             TOKEN_ISSUER: string;
+            ENCRYPTION_METHOD: string;
             /**
              * The environment which the current instance of Community is running in.
              * Valid values are: "dev", "prod"

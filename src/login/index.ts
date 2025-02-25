@@ -13,14 +13,13 @@ import Router, { Response, Request, NextFunction } from "express";
 import path from "path";
 import { getLoginDb } from "db";
 import bcrypt from "bcrypt";
-const { LOGIN_TABLE } = process.env;
 export const router = Router();
 import { fileURLToPath } from "url";
-import { generateAccessToken } from "auth";
+import { generateToken } from "auth";
 import { Database } from "sqlite";
 import { IErrorWithStatus } from "errors";
-import { LoginDBEntry, Roles } from "./types.js";
-import { loginRequestSchema } from "./zod.js";
+import { LoginDBSchema, LoginSchema } from "share/types.js";
+const { LOGIN_TABLE } = process.env;
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -29,26 +28,23 @@ router
     .get("/", (_, res: Response) => {
         res.sendFile(path.join(__dirname, "index.html"));
     })
-    .post("/", (req: Request, res: Response, next: NextFunction) => {
+    .post("/", async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const { uname, pass } = loginRequestSchema.parse(req.body);
-            getLoginDb().then(db => {
-                validateLogin(uname, pass, db);
-                req.log.info(`Successful login!`);
-                const stmt = `SELECT roles FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-                db.get<{ roles: Roles }>(stmt, {
-                    ":uname": uname
-                }).then(result => {
-                    const jwt: string = generateAccessToken({uname: uname, roles: result ? result.roles : 0});
-                    res.json({
-                        token: jwt
-                    })
-                }).catch((error: unknown) =>{
-                    throw error;
-                });
-            }).catch((error: unknown) => {
-                throw error
+            const { uname, pass } = LoginSchema.parse(req.body);
+            const db: Database = await getLoginDb();
+            const login: LoginDBSchema = await validateLogin(uname, pass, db);
+            req.log.info(`Successful login!`);
+            const stmt = `SELECT roleID FROM ${LOGIN_TABLE} WHERE userID=:userID`;
+            const roles: number[] = (await db.all<{roleID: number}[]>(stmt, {
+                ":userID": login.id
+            })).map(result => result.roleID);
+            const token = generateToken({
+                uname: login.uname,
+                pass: login.pass,
+                roles: roles
             });
+            res.setHeader('Set-Cookie', `token=${token}; Secure; HttpOnly`);
+            res.setHeader('Set-Cookie', `uname=${uname}; Secure`);
         } catch (e: unknown) {
             next(e);
         }
@@ -60,24 +56,22 @@ router
         return;
     });
 
-function validateLogin(uname: string, pass: string, db: Database): void {
+async function validateLogin(uname: string, pass: string, db: Database): Promise<LoginDBSchema> {
     const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-    db.get<LoginDBEntry>(stmt, {
+    const result = await db.get<LoginDBSchema>(stmt, {
         ":uname": uname,
-    }).then(result => {
-        if (!result) {
-            throw {
-                status: 401,
-                message: `Username ${uname} not registered...`,
-            } as IErrorWithStatus;
-        }
-        if (!bcrypt.compareSync(pass, result.pw)) {
-            throw {
-                status: 401,
-                message: `Incorrect password.`
-            } as IErrorWithStatus; 
-        }
-    }).catch((error: unknown) => {
-        throw error;
-    });
+    })
+    if (!result) {
+        throw {
+            status: 401,
+            message: `Username ${uname} not registered...`,
+        } as IErrorWithStatus;
+    }
+    if (!bcrypt.compareSync(pass, result.pass)) {
+        throw {
+            status: 401,
+            message: `Incorrect password.`
+        } as IErrorWithStatus; 
+    }
+    return result;
 }
