@@ -19,7 +19,7 @@ import { generateToken } from "auth";
 import { Database } from "sqlite";
 import { IErrorWithStatus } from "errors";
 import { LoginDBSchema, LoginSchema } from "share/types.js";
-const { LOGIN_TABLE } = process.env;
+const { LOGIN_TABLE, TOKEN_MAX_AGE } = process.env;
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,17 +41,26 @@ router
             const token = generateToken({
                 uname: login.uname,
                 pass: login.pass,
-                roles: roles
+                roles: roles,
             });
-            res.setHeader('Set-Cookie', `token=${token}; Secure; HttpOnly`);
-            res.setHeader('Set-Cookie', `uname=${uname}; Secure`);
+            await db.run(`UPDATE ${LOGIN_TABLE} SET token=:token WHERE id=:userID`, {
+                token: token,
+                userID: login.id,
+            })
+            const maxAge = (TOKEN_MAX_AGE ? +TOKEN_MAX_AGE : (10 * 24 * 60 * 60)) * 1000;
+            res.cookie('token', token, {
+                secure: true,
+                httpOnly: true,
+                sameSite: "strict",
+                maxAge: maxAge,
+            });
+            res.cookie('uname', uname, {secure: true});
         } catch (e: unknown) {
             next(e);
         }
     })
     .post("/out", (req: Request, res: Response, next: NextFunction) => {
-        const authHeader: string | undefined = req.headers.authorization;
-        const token: string = authHeader?.split(' ')[1] ?? "";
+
         res.status(200);
         return;
     });

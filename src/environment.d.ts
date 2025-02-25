@@ -58,6 +58,7 @@ declare global {
              * The issuing party for use session tokens
              */
             TOKEN_ISSUER: string;
+            TOKEN_MAX_AGE: string;
             ENCRYPTION_METHOD: string;
             /**
              * The environment which the current instance of Community is running in.
