@@ -12,7 +12,9 @@ You should have received a copy of the GNU General Public License along with Com
 import { NextFunction, Request, Response, Router } from "express";
 import crypto from "crypto";
 import { TokenData } from "share/types.js";
-const { TOKEN_SECRET, TOKEN_SECRET_IV, TOKEN_ISSUER, ENCRYPTION_METHOD } = process.env;
+import { getLoginDb } from "db";
+import { parse as parseCookies } from "cookie";
+const { TOKEN_SECRET, TOKEN_SECRET_IV, TOKEN_ISSUER, ENCRYPTION_METHOD, LOGIN_TABLE } = process.env;
 
 if (!TOKEN_SECRET || !TOKEN_SECRET_IV || !ENCRYPTION_METHOD) {
     throw new Error('Failed to load required env vars for token encryption.')
@@ -38,26 +40,42 @@ router
         res.send("Token is valid!");
     })
 
-export function generateToken({uname, pass, roles}: TokenData) : string {
+export function generateToken({id, uname, roles}: TokenData) : string {
     const cipher = crypto.createCipheriv(ENCRYPTION_METHOD, key, encryptionIV);
-    const data = [uname, pass, roles].join(';');
-    return  Buffer.from(
+    const data = [id, uname, roles].join(';');
+    return Buffer.from(
         cipher.update(data, 'utf8', 'hex') + cipher.final('hex')
     ).toString('base64');
 }
 
-export function requireValidToken(req: Request, res: Response, next: NextFunction) : void {
-    const cookies = req.headers?.cookies;
-    if (!cookies) {
+export async function requireValidToken(req: Request, res: Response, next: NextFunction) : Promise<void> {
+    const cookieString = req.headers?.cookie;
+    if (!cookieString) {
         res.redirect(401, '/login');
         return;
-    }
+    };
+    const cookies = parseCookies(cookieString);
+    const encryptedToken = cookies.token;
+    if (!encryptedToken) {
+        res.redirect(401, '/login');
+        return;
+    };
 
+    const buff = Buffer.from(encryptedToken, 'base64')
+    const decipher = crypto.createDecipheriv(ENCRYPTION_METHOD, key, encryptionIV)
+    const token = decipher.update(buff.toString('utf8'), 'hex', 'utf8') + decipher.final('utf8');
+    const id = token.split(';').find(tokenField => tokenField.startsWith('id'));
     try {
-        res.locals.token = jwt.verify(token, TOKEN_SECRET, options);
+        const db = await getLoginDb();
+        const tokenResult = await db.get<{token: string}>(`SELECT token FROM ${LOGIN_TABLE} where id=:userID`, { userID: id });
+        if (!tokenResult) {
+            console.error(`Unable to retrieve token from login DB: ${id}`);
+            throw new Error("Unable to retrieve token from login DB.");
+        }
+        const dbToken = tokenResult.token;
     } catch (e) {
         next(e);
-    }
+    };
 
     next();
 }

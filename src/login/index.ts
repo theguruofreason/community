@@ -34,13 +34,13 @@ router
             const db: Database = await getLoginDb();
             const login: LoginDBSchema = await validateLogin(uname, pass, db);
             req.log.info(`Successful login!`);
-            const stmt = `SELECT roleID FROM ${LOGIN_TABLE} WHERE userID=:userID`;
+            const stmt = `SELECT roleID FROM ${LOGIN_TABLE} WHERE id=:userID`;
             const roles: number[] = (await db.all<{roleID: number}[]>(stmt, {
                 ":userID": login.id
             })).map(result => result.roleID);
             const token = generateToken({
+                id: login.id,
                 uname: login.uname,
-                pass: login.pass,
                 roles: roles,
             });
             await db.run(`UPDATE ${LOGIN_TABLE} SET token=:token WHERE id=:userID`, {

@@ -1,3 +1,5 @@
+import { Response } from "express";
+
 const sameSite = ['Strict', 'Lax', 'None'] as const;
 type SameSite = typeof sameSite[number];
 
@@ -53,11 +55,11 @@ type CookieOptions = {
 /** Class representing a set of cookies. Can be constructed with a request object to automatically add cookie headers to request. */
 export default class Cookies {
     private cookies: Cookie[] = [];
-    private request?: Request = undefined;
+    private response?: Response = undefined;
 
-    constructor(cookies: Cookies, request?: Request) {
-        this.cookies = cookies.getCookies();
-        if (typeof request !== undefined) this.request = request;
+    constructor(cookies?: Cookies, response?: Response) {
+        this.cookies = cookies?.getCookies() ?? [];
+        this.response = response;
     };
 
     /**
@@ -95,7 +97,7 @@ export default class Cookies {
             );
             this.cookies.push(cookie);
         }
-        if (this.request) this.request.headers.append("Set-Cookie", cookie.toString());
+        if (this.response) this.response.setHeader("Set-Cookie", cookie.toString());
     };
 
     /**
@@ -115,6 +117,10 @@ export default class Cookies {
         return this.cookies.find(cookie => cookie.name == name);
     };
 
+    getCookieString(name: string): string | undefined {
+        return this.get(name)?.toString();
+    }
+
     /**
      * Add cookies to a headers object.
      * @param {Headers} headers The headers object to add the 'Set-Cookie' headers to.
@@ -124,4 +130,10 @@ export default class Cookies {
             headers.append("Set-Cookie", cookie.toString());
         }
     };
+
+    addToExpressResponse(res: Response): void {
+        for (let cookie of this.cookies) {
+            res.setHeader("Set-Cookie", cookie.toString());
+        }
+    }
 }
