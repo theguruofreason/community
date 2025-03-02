@@ -16,10 +16,6 @@ import { getLoginDb } from "db";
 import { parse as parseCookies } from "cookie";
 const { TOKEN_SECRET, TOKEN_SECRET_IV, TOKEN_ISSUER, ENCRYPTION_METHOD, LOGIN_TABLE } = process.env;
 
-if (!TOKEN_SECRET || !TOKEN_SECRET_IV || !ENCRYPTION_METHOD) {
-    throw new Error('Failed to load required env vars for token encryption.')
-}
-
 const key = crypto
     .createHash('sha512')
     .update(TOKEN_SECRET)
@@ -49,21 +45,17 @@ export function generateToken({id, uname, roles}: TokenData) : string {
 }
 
 export async function requireValidToken(req: Request, res: Response, next: NextFunction) : Promise<void> {
-    const cookieString = req.headers?.cookie;
-    if (!cookieString) {
+    const encryptedToken = getTokenFromRequestCookies(req);
+    if (encryptedToken === null) {
         res.redirect(401, '/login');
         return;
-    };
-    const cookies = parseCookies(cookieString);
-    const encryptedToken = cookies.token;
-    if (!encryptedToken) {
+    }
+    const token: string = decipherToken(encryptedToken);
+    if (token === null) {
         res.redirect(401, '/login');
         return;
-    };
+    }
 
-    const buff = Buffer.from(encryptedToken, 'base64')
-    const decipher = crypto.createDecipheriv(ENCRYPTION_METHOD, key, encryptionIV)
-    const token = decipher.update(buff.toString('utf8'), 'hex', 'utf8') + decipher.final('utf8');
     const id = token.split(';').find(tokenField => tokenField.startsWith('id'));
     try {
         const db = await getLoginDb();
@@ -73,6 +65,10 @@ export async function requireValidToken(req: Request, res: Response, next: NextF
             throw new Error("Unable to retrieve token from login DB.");
         }
         const dbToken = tokenResult.token;
+        if (token !== dbToken) {
+            res.redirect(401, '/login');
+            return;
+        }
     } catch (e) {
         next(e);
     };
@@ -80,16 +76,17 @@ export async function requireValidToken(req: Request, res: Response, next: NextF
     next();
 }
 
-export function isTokenValid(authHeader: string | undefined) : boolean {
-    if (!authHeader) {
-        return false;
-    }
-    const encodedReqToken: string = authHeader.split(' ')[1];
+function getTokenFromRequestCookies(req: Request): string | null {
+    const cookieString = req.headers?.cookie;
+    if (!cookieString) return null;
+    const cookies = parseCookies(cookieString);
+    const encryptedToken = cookies.token;
+    if (!encryptedToken) return null;
+    return encryptedToken;
+}
 
-    const decodedReqToken: jwt.JwtPayload | string = jwt.verify(encodedReqToken, TOKEN_SECRET, { issuer: TOKEN_ISSUER, maxAge: TOKEN_MAX_AGE });
-    if (typeof decodedReqToken == 'string') {
-        return false;
-    }
-
-    return true;
+export function decipherToken(encryptedToken) {
+    const buff = Buffer.from(encryptedToken, 'base64')
+    const decipher = crypto.createDecipheriv(ENCRYPTION_METHOD, key, encryptionIV)
+    return decipher.update(buff.toString('utf8'), 'hex', 'utf8') + decipher.final('utf8');
 }
