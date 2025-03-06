@@ -11,7 +11,7 @@ You should have received a copy of the GNU General Public License along with Com
 */
 import Router, { Response, Request, NextFunction } from "express";
 import path from "path";
-import { getLoginDb } from "db";
+import { getLoginDB } from "db";
 import bcrypt from "bcrypt";
 export const router = Router();
 import { fileURLToPath } from "url";
@@ -31,7 +31,7 @@ router
     .post("/", async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { uname, pass } = LoginSchema.parse(req.body);
-            const db: Database = await getLoginDb();
+            const db: Database = await getLoginDB();
             const login: LoginDBSchema = await validateLogin(uname, pass, db);
             req.log.info(`Successful login!`);
             const stmt = `SELECT roleID FROM ${LOGIN_TABLE} WHERE id=:userID`;

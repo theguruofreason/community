@@ -12,9 +12,9 @@ You should have received a copy of the GNU General Public License along with Com
 import { NextFunction, Request, Response, Router } from "express";
 import crypto from "crypto";
 import { TokenData } from "share/types.js";
-import { getLoginDb } from "db";
+import { getLoginDB } from "db";
 import { parse as parseCookies } from "cookie";
-const { TOKEN_SECRET, TOKEN_SECRET_IV, TOKEN_ISSUER, ENCRYPTION_METHOD, LOGIN_TABLE } = process.env;
+const { TOKEN_SECRET, TOKEN_SECRET_IV, ENCRYPTION_METHOD, LOGIN_TABLE } = process.env;
 
 const key = crypto
     .createHash('sha512')
@@ -58,7 +58,7 @@ export async function requireValidToken(req: Request, res: Response, next: NextF
 
     const id = token.split(';').find(tokenField => tokenField.startsWith('id'));
     try {
-        const db = await getLoginDb();
+        const db = await getLoginDB();
         const tokenResult = await db.get<{token: string}>(`SELECT token FROM ${LOGIN_TABLE} where id=:userID`, { userID: id });
         if (!tokenResult) {
             console.error(`Unable to retrieve token from login DB: ${id}`);

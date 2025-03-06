@@ -12,7 +12,7 @@ You should have received a copy of the GNU General Public License along with Com
 import bcrypt from "bcrypt";
 import Router, { Response, Request, NextFunction } from "express";
 import path from "path";
-import { getLoginDb } from "db";
+import { getLoginDB } from "db";
 import { SALT_ROUNDS } from "configs";
 import { Driver } from "neo4j-driver";
 import { Statement } from "sqlite";
@@ -68,7 +68,7 @@ router
 
 
 async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
-    const loginDB = await getLoginDb();
+    const loginDB = await getLoginDB();
     if (!loginDB) {
         throw new Error("Failed to load login db");
     }
@@ -110,7 +110,7 @@ async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
 }
 
 async function unregister(uname: string, pass: string, n4jDriver: Driver): Promise<void> {
-    const db = await getLoginDb();
+    const db = await getLoginDB();
     if (!db) {
         throw new Error("Failed to load login db")
     }

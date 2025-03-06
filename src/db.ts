@@ -19,7 +19,7 @@ const {
 import { pino } from "pino";
 const log = pino();
 
-export function getLoginDb(): Promise<Database> {
+export function getLoginDB(): Promise<Database> {
     return open({
         filename: LOGIN_DB_URI,
         // eslint-disable-next-line @typescript-eslint/unbound-method
