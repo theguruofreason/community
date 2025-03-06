@@ -32,7 +32,7 @@ test('Auth', async (t) => {
     })
     t.after(() => {
         loginDB.close();
-        // fs.unlinkSync("login");
+        fs.unlinkSync("login");
     })
     await t.test('mock db works', async () => {
         const db = await getLoginDB();
