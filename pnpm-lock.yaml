@@ -90,6 +90,9 @@ importers:
       eslint:
         specifier: ^9.21.0
         version: 9.21.0
+      esmock:
+        specifier: ^2.7.0
+        version: 2.7.0
       nodemon:
         specifier: ^3.1.9
         version: 3.1.9
@@ -884,6 +887,10 @@ packages:
     peerDependenciesMeta:
       jiti:
         optional: true
+
+  esmock@2.7.0:
+    resolution: {integrity: sha512-nYSvky0rP//13eYIGJ7b1dhsaBxtS370UoDWbILo1jHlO4hrCUkp/LD3e54QVhySxAGLsufxi5A4+wUAxPUIrg==}
+    engines: {node: '>=14.16.0'}
 
   espree@10.3.0:
     resolution: {integrity: sha512-0QYC8b24HWY8zjRnDTL6RiHfDbAWn63qb4LMj1Z4b076A4une81+z03Kg7l7mn/48PUTqoLptSXez8oknU8Clg==}
@@ -2833,6 +2840,8 @@ snapshots:
       optionator: 0.9.4
     transitivePeerDependencies:
       - supports-color
+
+  esmock@2.7.0: {}
 
   espree@10.3.0:
     dependencies:

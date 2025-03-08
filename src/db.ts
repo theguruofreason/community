@@ -87,3 +87,5 @@ export function Neo4jMiddleware(neo4jDriver: Neo4jDriver) {
         next();
     }
 }
+
+export default {getLoginDB, Neo4jMiddleware, Neo4jDriver}

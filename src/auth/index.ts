@@ -56,16 +56,16 @@ export async function requireValidToken(req: Request, res: Response, next: NextF
         return;
     }
 
-    const id = token.split(';').find(tokenField => tokenField.startsWith('id'));
+    const id = token.split(';')[0];
     try {
-        const db = await getLoginDB();
-        const tokenResult = await db.get<{token: string}>(`SELECT token FROM ${LOGIN_TABLE} where id=:userID`, { userID: id });
+        const loginDB = await getLoginDB();
+        const tokenResult = await loginDB.get<{token: string}>(`SELECT token FROM ${LOGIN_TABLE} WHERE id=:userID`, { ":userID": id });
         if (!tokenResult) {
             console.error(`Unable to retrieve token from login DB: ${id}`);
             throw new Error("Unable to retrieve token from login DB.");
         }
         const dbToken = tokenResult.token;
-        if (token !== dbToken) {
+        if (encryptedToken !== dbToken) {
             res.redirect(401, '/login');
             return;
         }
