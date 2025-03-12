@@ -13,9 +13,7 @@ import sqlite3 from "sqlite3";
 import { open, Database } from "sqlite";
 import neo4j, { Driver, ServerInfo, Session } from "neo4j-driver";
 import { NextFunction, Request, Response } from "express";
-const {
-    LOGIN_DB_URI
-} = process.env;
+const { LOGIN_DB_URI } = process.env;
 import { pino } from "pino";
 const log = pino();
 
@@ -38,7 +36,7 @@ export class Neo4jDriver {
     ) {
         this.driver = neo4j.driver(
             this.uri,
-            neo4j.auth.basic(this.uname, this.pw)
+            neo4j.auth.basic(this.uname, this.pw),
         );
     }
 
@@ -46,19 +44,25 @@ export class Neo4jDriver {
         let retries = 0;
         let connectionEstablished = false;
         while (retries <= maxRetries) {
-            connectionEstablished = await this.driver.getServerInfo().then((serverInfo) => {
-                log.info("Local Neo4J connection established!");
-                log.info(serverInfo);
-                this._serverInfo = serverInfo;
-                return true;
-            })
-            .catch((err: unknown) => {
-                log.error(err)
-                log.warn(`Neo4J connection failed...\n${(maxRetries - retries).toString()} retries remaining...`)
-                retries++;
-                return false;
-            });
-            if (connectionEstablished) { break; }
+            connectionEstablished = await this.driver
+                .getServerInfo()
+                .then((serverInfo) => {
+                    log.info("Local Neo4J connection established!");
+                    log.info(serverInfo);
+                    this._serverInfo = serverInfo;
+                    return true;
+                })
+                .catch((err: unknown) => {
+                    log.error(err);
+                    log.warn(
+                        `Neo4J connection failed...\n${(maxRetries - retries).toString()} retries remaining...`,
+                    );
+                    retries++;
+                    return false;
+                });
+            if (connectionEstablished) {
+                break;
+            }
         }
         return connectionEstablished;
     }
@@ -85,7 +89,7 @@ export function Neo4jMiddleware(neo4jDriver: Neo4jDriver) {
             process.exit(1);
         }
         next();
-    }
+    };
 }
 
-export default {getLoginDB, Neo4jMiddleware, Neo4jDriver}
+export default { getLoginDB, Neo4jMiddleware, Neo4jDriver };

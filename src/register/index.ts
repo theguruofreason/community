@@ -36,17 +36,16 @@ router
         if (!userInfo.uname || !userInfo.pass || !userInfo.name) {
             throw {
                 status: 400,
-                message: "Username, name, and password required."
+                message: "Username, name, and password required.",
             } as IErrorWithStatus;
         }
-        register(
-            userInfo,
-            neo4jDriver
-        ).then(() => {
-            res.sendStatus(200);
-        }).catch((e: unknown) => {
-            next(e);
-        });
+        register(userInfo, neo4jDriver)
+            .then(() => {
+                res.sendStatus(200);
+            })
+            .catch((e: unknown) => {
+                next(e);
+            });
     })
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     .post("/u", (req: Request, res: Response, next: NextFunction) => {
@@ -54,18 +53,19 @@ router
         if (!uname || !pass) {
             next({
                 status: 400,
-                message: "uname and pass required"
+                message: "uname and pass required",
             });
             return;
         }
-        unregister(uname, pass, req.n4jDriver).then(() => {
-            res.sendStatus(200);
-        }).catch((e: unknown) => {
-            next(e);
-            return;
-        })
+        unregister(uname, pass, req.n4jDriver)
+            .then(() => {
+                res.sendStatus(200);
+            })
+            .catch((e: unknown) => {
+                next(e);
+                return;
+            });
     });
-
 
 async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
     const loginDB = await getLoginDB();
@@ -81,18 +81,18 @@ async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
     if (result) {
         throw {
             status: 400,
-            message: `uname ${userInfo.uname} already registered.`
+            message: `uname ${userInfo.uname} already registered.`,
         } as IErrorWithStatus;
     }
 
     // Register user info with login DB and Neo4j DB
     const hash: string = await bcrypt.hash(userInfo.pass, SALT_ROUNDS);
-    
+
     const sqliteStatement: Statement = await loginDB.prepare(
-        `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (:uname, :email, :password)`
+        `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (:uname, :email, :password)`,
     );
-    const userInfoParams: string[] = Object.entries(userInfo).map( keyval => {
-        return `${keyval[0]}: $${keyval[0]}`
+    const userInfoParams: string[] = Object.entries(userInfo).map((keyval) => {
+        return `${keyval[0]}: $${keyval[0]}`;
     });
     // TODO: Move id generation to Neo4J using apoc pluggin
     userInfoParams.push("id: $id");
@@ -104,15 +104,19 @@ async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
         }),
         n4jDriver.executeQuery(
             `MERGE (p:Person {${userInfoParams.join(", ")}})`,
-            {...userInfo, id: uuidv4()}
+            { ...userInfo, id: uuidv4() },
         ),
     ]);
 }
 
-async function unregister(uname: string, pass: string, n4jDriver: Driver): Promise<void> {
+async function unregister(
+    uname: string,
+    pass: string,
+    n4jDriver: Driver,
+): Promise<void> {
     const db = await getLoginDB();
     if (!db) {
-        throw new Error("Failed to load login db")
+        throw new Error("Failed to load login db");
     }
 
     // Check if user is registered
@@ -124,13 +128,13 @@ async function unregister(uname: string, pass: string, n4jDriver: Driver): Promi
         if (!result) {
             throw {
                 status: 400,
-                message: `uname ${uname} not registered.`
+                message: `uname ${uname} not registered.`,
             } as IErrorWithStatus;
         }
-        if (!(bcrypt.compareSync(pass, result.pass))) {
+        if (!bcrypt.compareSync(pass, result.pass)) {
             throw {
                 status: 401,
-                message: `Bad password for ${uname}.`
+                message: `Bad password for ${uname}.`,
             } as IErrorWithStatus;
         }
     }
@@ -139,13 +143,13 @@ async function unregister(uname: string, pass: string, n4jDriver: Driver): Promi
     const stmt = `DELETE FROM ${LOGIN_TABLE} WHERE uname=:uname`;
     await Promise.all([
         db.run(stmt, {
-            ":uname": uname
+            ":uname": uname,
         }),
         n4jDriver.executeQuery(
             `MATCH (p:Person) WHERE p.uname = $uname DETACH DELETE p`,
             {
-                uname: uname
-            }
-        )
-    ])
+                uname: uname,
+            },
+        ),
+    ]);
 }

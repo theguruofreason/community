@@ -3,44 +3,41 @@ import { z } from "zod";
 
 // String Literals
 
-export type RelationshipType =  
-    "FAMILY" |
-    "FOLLOW" |
-    "FRIEND" |
-    "OWNERSHIP" |
-    "EMPLOYMENT" |
-    "MEMBERSHIP" |
-    "AFFILIATION";
+export type RelationshipType =
+    | "FAMILY"
+    | "FOLLOW"
+    | "FRIEND"
+    | "OWNERSHIP"
+    | "EMPLOYMENT"
+    | "MEMBERSHIP"
+    | "AFFILIATION";
 
 export type Visibility =
-    "PUBLIC" |
-    "FAMILY" |
-    "FRIENDS" |
-    "FOLLOWERS" |
-    "MEMBERS" |
-    "AFFILIATIONS";
+    | "PUBLIC"
+    | "FAMILY"
+    | "FRIENDS"
+    | "FOLLOWERS"
+    | "MEMBERS"
+    | "AFFILIATIONS";
 
-export type Role =
-    "USER" |
-    "MODERATOR" |
-    "ADMIN";
+export type Role = "USER" | "MODERATOR" | "ADMIN";
 
-export type EntityLabel = 
-    "Person" |
-    "Place" |
-    "Thing" |
-    "Business" |
-    "Group" |
-    "Event";
+export type EntityLabel =
+    | "Person"
+    | "Place"
+    | "Thing"
+    | "Business"
+    | "Group"
+    | "Event";
 
 export type PostType =
-    "TextPost" |
-    "ImagePost" |
-    "AudioPost" |
-    "VideoPost" |
-    "LinkPost";
+    | "TextPost"
+    | "ImagePost"
+    | "AudioPost"
+    | "VideoPost"
+    | "LinkPost";
 
-// Interfaces 
+// Interfaces
 export interface Entity {
     __typename: string;
     id: string;
@@ -101,8 +98,8 @@ export interface TextPostQueryResult {
     r: {
         properties: {
             creationDateTime: Date;
-        }
-    }
+        };
+    };
 }
 
 export interface Person extends Entity {
@@ -122,7 +119,7 @@ export interface Person extends Entity {
 }
 
 export interface EntityAndRelationship {
-    entity: Entity & {__typename: EntityLabel};
+    entity: Entity & { __typename: EntityLabel };
     relationship: Relationship;
     direction: Direction;
 }
@@ -157,10 +154,9 @@ export interface Relationship {
 }
 
 export interface RelationshipPath extends Relationship {
-    subject: Entity & {__typename: EntityLabel};
-    object: Entity & {__typename: EntityLabel};
+    subject: Entity & { __typename: EntityLabel };
+    object: Entity & { __typename: EntityLabel };
 }
-
 
 // Inputs
 export interface EstablishRelationshipArgs {
@@ -182,9 +178,9 @@ export interface EntityLookupArgs {
 export type Direction = "OUT" | "IN" | "BIDIRECTIONAL";
 
 export interface LookupRelatedEntitiesArgs {
-    relationshipTypes?: RelationshipType[],
-    descriptorSearch?: string,
-    direction: Direction
+    relationshipTypes?: RelationshipType[];
+    descriptorSearch?: string;
+    direction: Direction;
 }
 
 export interface PostsByAuthorIdArgs {
@@ -200,25 +196,25 @@ export const ENTITY_LABELS: string[] = [
     "Thing",
     "Business",
     "Group",
-    "Event"
-]
+    "Event",
+];
 
 export const POST_TYPES: string[] = [
     "TextPost",
     "ImagePost",
     "AudioPost",
     "VideoPost",
-    "LinkPost"
-]
+    "LinkPost",
+];
 
 export const authorTextPostSchema = z.object({
     deactivationDateTime: z.string().datetime().optional(),
     activationDateTime: z.number().optional(),
     content: z.string(),
     visibility: z.custom<Visibility>().array(),
-    replyOf: z.string().uuid().optional()
-})
+    replyOf: z.string().uuid().optional(),
+});
 
 export type AuthorTextPostArgs = z.infer<typeof authorTextPostSchema> & {
-    creationDateTime: number
-}
+    creationDateTime: number;
+};

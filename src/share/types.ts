@@ -22,13 +22,13 @@ export const LoginSchema = z.object({
 export type Login = z.infer<typeof LoginSchema>;
 
 export type LoginDBSchema = {
-    id: number,
-    uname: string,
-    pass: string,
-}
+    id: number;
+    uname: string;
+    pass: string;
+};
 
 export type TokenData = {
-    id: number,
-    uname: string,
-    roles: number[]
-}
+    id: number;
+    uname: string;
+    roles: number[];
+};

@@ -19,7 +19,6 @@
       "graphQuery": ["./gql/index.ts"],
       "auth": ["./auth/index.ts"]
     },
-    "types": ["@types/jest"],                                      
     "resolveJsonModule": true,                        
     "sourceMap": true,                                
     "outDir": "./dist",                                   

@@ -32,11 +32,10 @@ router
     .use("/auth", auth);
 if (RUNTIME_ENVIRONMENT.toLowerCase() == "dev") {
     router.use("/ruru", (_req, res) => {
-        res.type("html")
-        res.end(ruruHTML({ endpoint: "/graphql" }))
+        res.type("html");
+        res.end(ruruHTML({ endpoint: "/graphql" }));
     });
-if (["prod", "test"].includes(RUNTIME_ENVIRONMENT.toLocaleLowerCase()))
-    router.use("/graphql", requireValidToken);
-};
-router
-    .all("/graphql", graphQueryHandler);
+    if (["prod", "test"].includes(RUNTIME_ENVIRONMENT.toLocaleLowerCase()))
+        router.use("/graphql", requireValidToken);
+}
+router.all("/graphql", graphQueryHandler);
