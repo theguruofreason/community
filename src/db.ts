@@ -9,20 +9,28 @@ Community is distributed in the hope that it will be useful, but WITHOUT ANY WAR
 
 You should have received a copy of the GNU General Public License along with Community. If not, see <https://www.gnu.org/licenses/>. 
 */
-import sqlite3 from "sqlite3";
-import { open, Database } from "sqlite";
+import Sqlite3 from 'better-sqlite3';
 import neo4j, { Driver, ServerInfo, Session } from "neo4j-driver";
 import { NextFunction, Request, Response } from "express";
 const { LOGIN_DB_URI } = process.env;
 import { pino } from "pino";
 const log = pino();
 
-export function getLoginDB(): Promise<Database> {
-    return open({
-        filename: LOGIN_DB_URI,
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        driver: sqlite3.cached.Database,
-    });
+export class LoginDB {
+    static #db: Sqlite3.Database;
+    private constructor() {};
+    static get(): Sqlite3.Database {
+        if (this.#db) {
+            return this.#db;
+        }
+
+        this.#db = new Sqlite3(LOGIN_DB_URI);
+        return this.#db;
+    }
+}
+
+export function getLoginDB(): Sqlite3.Database {
+    return LoginDB.get();
 }
 
 export class Neo4jDriver {
@@ -91,5 +99,3 @@ export function Neo4jMiddleware(neo4jDriver: Neo4jDriver) {
         next();
     };
 }
-
-export default { getLoginDB, Neo4jMiddleware, Neo4jDriver };

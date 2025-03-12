@@ -25,6 +25,7 @@ export type LoginDBSchema = {
     id: number;
     uname: string;
     pass: string;
+    token: string;
 };
 
 export type TokenData = {

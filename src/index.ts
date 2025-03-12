@@ -10,6 +10,7 @@ Community is distributed in the hope that it will be useful, but WITHOUT ANY WAR
 You should have received a copy of the GNU General Public License along with Community. If not, see <https://www.gnu.org/licenses/>. 
 */
 import { Neo4jDriver, Neo4jMiddleware } from "db";
+import { LoginDB } from "db";
 import { router } from "routes";
 import cors from "cors";
 import express, { Express } from "express";
@@ -31,6 +32,9 @@ const port = +(PORT ?? 3000);
 const corsOptions = {
     origin: ORIGIN,
 };
+
+// Initialize LoginDB
+LoginDB.get();
 
 // Initialize Neo4J connection
 const localNeo4JDriver: Neo4jDriver = new Neo4jDriver(

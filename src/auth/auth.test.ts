@@ -1,9 +1,10 @@
 import esmock from "esmock";
 import { describe, it, after } from "node:test";
-import { Database, open } from "sqlite";
 import { Request, Response } from "express";
+import { generateToken, decipherToken } from "auth";
+import Sqlite3 from "better-sqlite3";
 import assert from "node:assert";
-import sqlite3 from "sqlite3";
+import { LoginDBSchema } from "share/types.js";
 const { LOGIN_TABLE } = process.env;
 
 describe("Auth", async () => {
@@ -12,48 +13,39 @@ describe("Auth", async () => {
     const userPassword: string = "Us3rP4ssw0rd";
     const userRoles: number[] = [1, 2];
     const userInfo = { id: userID, uname: userName, roles: userRoles };
-    let loginDB: Database<sqlite3.Database, sqlite3.Statement> = await open({
-        filename: ":memory:",
-        driver: sqlite3.Database,
-    });
-    const auth = await esmock("./index.ts", import.meta.url, {
+    const loginDB: Sqlite3.Database = new Sqlite3(":memory:");
+    const mockedAuth = await esmock("./index.ts", import.meta.url, {
         "../db.ts": {
             getLoginDB: () => loginDB,
         },
     });
-    await loginDB.exec(
+    loginDB.exec(
         `CREATE TABLE ${LOGIN_TABLE} (id INT NOT NULL, uname TEXT NOT NULL, pass TEXT NOT NULL, token TEXT NULL)`,
     );
-    await loginDB.exec(
+    loginDB.exec(
         `INSERT INTO ${LOGIN_TABLE} (id, uname, pass) VALUES (${userID}, '${userName}', '${userPassword}')`,
     );
-    const query: string =
-        "SELECT id, uname, pass, token FROM login WHERE id=:id";
-    const { id, pass, uname, token } = await loginDB.get(query, {
-        ":id": userID,
-    });
-    assert.strictEqual(id, userID);
-    assert.strictEqual(uname, userName);
-    assert.strictEqual(pass, userPassword);
-    assert.strictEqual(token, null);
     after(() => {
         loginDB.close();
     });
+    it("generates a token", () => {
+        assert(generateToken(userInfo));
+    });
     it("encrypts and decrypts a token", () => {
-        const encryptedToken = auth.generateToken(userInfo);
-        const token = auth.decipherToken(encryptedToken);
+        const encryptedToken = generateToken(userInfo);
+        const token = decipherToken(encryptedToken);
         assert.strictEqual(
             token,
             `${userInfo.id};${userInfo.uname};${userInfo.roles}`,
         );
     });
     it("validates a token", async () => {
-        const encryptedToken = auth.generateToken(userInfo);
+        const encryptedToken = generateToken(userInfo);
         await loginDB.exec(
             `UPDATE ${LOGIN_TABLE} SET token='${encryptedToken}' WHERE id=${userID}`,
         );
         const req = { headers: { cookie: `token=${encryptedToken}` } };
-        auth.requireValidToken(req as Request, {} as Response, (e) => {
+        mockedAuth.requireValidToken(req as Request, {} as Response, (e) => {
             if (e) throw e;
         });
     });

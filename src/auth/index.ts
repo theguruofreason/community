@@ -14,6 +14,7 @@ import crypto from "crypto";
 import { TokenData } from "share/types.js";
 import { getLoginDB } from "db";
 import { parse as parseCookies } from "cookie";
+import Sqlite3 from "better-sqlite3";
 const { TOKEN_SECRET, TOKEN_SECRET_IV, ENCRYPTION_METHOD, LOGIN_TABLE } =
     process.env;
 
@@ -39,14 +40,14 @@ export function generateToken({ id, uname, roles }: TokenData): string {
     const cipher = crypto.createCipheriv(ENCRYPTION_METHOD, key, encryptionIV);
     const data = [id, uname, roles].join(";");
     return Buffer.from(
-        cipher.update(data, "utf8", "hex") + cipher.final("hex"),
+        cipher.update(data, "utf8", "hex") + cipher.final("hex")
     ).toString("base64");
 }
 
 export async function requireValidToken(
     req: Request,
     res: Response,
-    next: NextFunction,
+    next: NextFunction
 ): Promise<void> {
     const encryptedToken = getTokenFromRequestCookies(req);
     if (encryptedToken === null) {
@@ -59,13 +60,14 @@ export async function requireValidToken(
         return;
     }
 
-    const id = token.split(";")[0];
+    const id: number = +token.split(";")[0];
     try {
-        const loginDB = await getLoginDB();
-        const tokenResult = await loginDB.get<{ token: string }>(
-            `SELECT token FROM ${LOGIN_TABLE} WHERE id=:userID`,
-            { ":userID": id },
-        );
+        const loginDB: Sqlite3.Database = getLoginDB();
+        const tokenResult = loginDB
+            .prepare<number, { token: string }>(
+                `SELECT token FROM ${LOGIN_TABLE} WHERE id=?`
+            )
+            .get(id);
         if (!tokenResult) {
             console.error(`Unable to retrieve token from login DB: ${id}`);
             throw new Error("Unable to retrieve token from login DB.");
@@ -96,7 +98,7 @@ export function decipherToken(encryptedToken) {
     const decipher = crypto.createDecipheriv(
         ENCRYPTION_METHOD,
         key,
-        encryptionIV,
+        encryptionIV
     );
     return (
         decipher.update(buff.toString("utf8"), "hex", "utf8") +
