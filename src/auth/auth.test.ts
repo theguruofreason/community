@@ -4,7 +4,6 @@ import { Request, Response } from "express";
 import { generateToken, decipherToken } from "auth";
 import Sqlite3 from "better-sqlite3";
 import assert from "node:assert";
-import { LoginDBSchema } from "share/types.js";
 const { LOGIN_TABLE } = process.env;
 
 describe("Auth", async () => {
@@ -41,11 +40,11 @@ describe("Auth", async () => {
     });
     it("validates a token", async () => {
         const encryptedToken = generateToken(userInfo);
-        await loginDB.exec(
+        loginDB.exec(
             `UPDATE ${LOGIN_TABLE} SET token='${encryptedToken}' WHERE id=${userID}`,
         );
         const req = { headers: { cookie: `token=${encryptedToken}` } };
-        mockedAuth.requireValidToken(req as Request, {} as Response, (e) => {
+        await mockedAuth.requireValidToken(req as Request, {} as Response, (e) => {
             if (e) throw e;
         });
     });
