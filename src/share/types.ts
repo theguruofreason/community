@@ -7,9 +7,12 @@ export const UserInfoSchema = z.object({
     pass: z.string().min(+PASSWORD_MIN_LENGTH),
     name: z.string().nonempty(),
     description: z.string().optional(),
-    roles: z.number().array(),
-    active: z.boolean(),
-    creationDateTime: z.string().pipe(z.coerce.date()),
+    roles: z.preprocess(roles => {
+        if (Array.isArray(roles)) return roles;
+        if (typeof roles === 'string') return roles.split(',').map(roleID => +roleID);
+    }, z.number().array()),
+    active: z.boolean().optional(),
+    creationDateTime: z.string().pipe(z.coerce.date()).optional(),
 });
 
 export type UserInfo = z.infer<typeof UserInfoSchema>;

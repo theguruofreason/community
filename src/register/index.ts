@@ -29,7 +29,7 @@ router
     .get("/", (_, res: Response) => {
         res.sendFile(path.join(__dirname, "index.html"));
     })
-    .post("/", (req: Request, res: Response, next: NextFunction) => {
+    .post("/", async (req: Request, res: Response, next: NextFunction) => {
         const neo4jDriver: Driver = req.n4jDriver;
         const userInfo: UserInfo = UserInfoSchema.parse(req.body);
         if (!userInfo.uname || !userInfo.pass || !userInfo.name) {
@@ -38,32 +38,19 @@ router
                 message: "Username, name, and password required.",
             } as IErrorWithStatus;
         }
-        register(userInfo, neo4jDriver)
-            .then(() => {
-                res.sendStatus(200);
-            })
-            .catch((e: unknown) => {
-                next(e);
-            });
+        await register(userInfo, neo4jDriver);
+        res.sendStatus(200);
     })
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
-    .post("/u", (req: Request, res: Response, next: NextFunction) => {
+    .post("/u", async (req: Request, res: Response, next: NextFunction) => {
         const { uname, pass } = LoginSchema.parse(req.body);
         if (!uname || !pass) {
-            next({
+            throw {
                 status: 400,
                 message: "uname and pass required",
-            });
-            return;
+            } as IErrorWithStatus;
         }
-        unregister(uname, pass, req.n4jDriver)
-            .then(() => {
-                res.sendStatus(200);
-            })
-            .catch((e: unknown) => {
-                next(e);
-                return;
-            });
+        await unregister(uname, pass, req.n4jDriver);
+        res.sendStatus(200);
     });
 
 async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
@@ -129,12 +116,14 @@ async function unregister(
     }
 
     // Delete user info in DB
-    const stmt = loginDB.prepare<string, null>(`DELETE FROM ${LOGIN_TABLE} WHERE uname=?`);
+    const stmt = loginDB.prepare<string, null>(
+        `DELETE FROM ${LOGIN_TABLE} WHERE uname=?`
+    );
     stmt.run(uname),
-    await n4jDriver.executeQuery(
-        `MATCH (p:Person) WHERE p.uname = $uname DETACH DELETE p`,
-        {
-            uname: uname,
-        }
-    )
+        await n4jDriver.executeQuery(
+            `MATCH (p:Person) WHERE p.uname = $uname DETACH DELETE p`,
+            {
+                uname: uname,
+            }
+        );
 }
