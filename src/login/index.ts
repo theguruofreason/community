@@ -16,9 +16,9 @@ import bcrypt from "bcrypt";
 export const router = Router();
 import { fileURLToPath } from "url";
 import { generateToken } from "auth";
-import { Database } from "sqlite";
 import { IErrorWithStatus } from "errors";
 import { LoginDBSchema, LoginSchema } from "share/types.js";
+import { Database } from "better-sqlite3";
 const { LOGIN_TABLE, TOKEN_MAX_AGE } = process.env;
 
 
@@ -31,22 +31,24 @@ router
     .post("/", async (req: Request, res: Response, next: NextFunction) => {
         try {
             const { uname, pass } = LoginSchema.parse(req.body);
-            const db: Database = await getLoginDB();
-            const login: LoginDBSchema = await validateLogin(uname, pass, db);
+            const db: Database = getLoginDB();
+            const login: LoginDBSchema = await validateLogin(uname, pass);
             req.log.info(`Successful login!`);
-            const stmt = `SELECT roleID FROM ${LOGIN_TABLE} WHERE id=:userID`;
-            const roles: number[] = (await db.all<{roleID: number}[]>(stmt, {
-                ":userID": login.id
-            })).map(result => result.roleID);
+            const getRolesStatement = db.prepare<number, {roleID: number[]}>(`SELECT roleID FROM ${LOGIN_TABLE} WHERE id=?`);
+            const getRolesResult: {roleID: number[]} | undefined = getRolesStatement.get(login.id);
+            if (getRolesResult === undefined) {
+                const msg = `Failed to find user: ${login.uname}`
+                console.error(msg)
+                throw new Error(msg)
+            }
+            const roles: number[] = getRolesResult.roleID;
             const token = generateToken({
                 id: login.id,
                 uname: login.uname,
                 roles: roles,
             });
-            await db.run(`UPDATE ${LOGIN_TABLE} SET token=:token WHERE id=:userID`, {
-                token: token,
-                userID: login.id,
-            })
+            const addTokenStatement = db.prepare(`UPDATE ${LOGIN_TABLE} SET token=? WHERE id=?`);
+            addTokenStatement.run(token, login.id);
             const maxAge = (TOKEN_MAX_AGE ? +TOKEN_MAX_AGE : (10 * 24 * 60 * 60)) * 1000;
             res.cookie('token', token, {
                 secure: true,
@@ -65,21 +67,14 @@ router
         return;
     });
 
-async function validateLogin(uname: string, pass: string, db: Database): Promise<LoginDBSchema> {
-    const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`;
-    const result = await db.get<LoginDBSchema>(stmt, {
-        ":uname": uname,
-    })
-    if (!result) {
+async function validateLogin(uname: string, pass: string): Promise<LoginDBSchema> {
+    const loginDB: Database = getLoginDB();
+    const stmt = loginDB.prepare<string, LoginDBSchema>(`SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`);
+    const result = stmt.get(uname);
+    if (!result || !bcrypt.compareSync(pass, result.pass)) {
         throw {
             status: 401,
-            message: `Username ${uname} not registered...`,
-        } as IErrorWithStatus;
-    }
-    if (!bcrypt.compareSync(pass, result.pass)) {
-        throw {
-            status: 401,
-            message: `Incorrect password.`
+            message: `Incorrect username or password.`
         } as IErrorWithStatus; 
     }
     return result;
