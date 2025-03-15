@@ -70,20 +70,21 @@ async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
     }
 
     // Register user info with login DB and Neo4j DB
-    const hash: string = await bcrypt.hash(userInfo.pass, SALT_ROUNDS);
+    const passwordHash: string = await bcrypt.hash(userInfo.pass, SALT_ROUNDS);
 
     const sqliteStatement = loginDB.prepare(
-        `INSERT INTO ${LOGIN_TABLE} (uname, email, pw) VALUES (?, ?, ?)`
+        `INSERT INTO ${LOGIN_TABLE} (uname, email, pass) VALUES (?, ?, ?)`
     );
-    sqliteStatement.get(userInfo.uname, userInfo.email, hash);
-    const userInfoParams: string[] = Object.entries(userInfo).map((keyval) => {
+    sqliteStatement.run(userInfo.uname, userInfo.email || null, passwordHash);
+    const {pass, ...n4jUserInfo} = userInfo;
+    const userInfoParams: string[] = Object.entries(n4jUserInfo).map((keyval) => {
         return `${keyval[0]}: $${keyval[0]}`;
     });
     // TODO: Move id generation to Neo4J using apoc pluggin
     userInfoParams.push("id: $id");
     await n4jDriver.executeQuery(
         `MERGE (p:Person {${userInfoParams.join(", ")}})`,
-        { ...userInfo, id: uuidv4() }
+        { ...userInfoParams, id: uuidv4() }
     );
 }
 
