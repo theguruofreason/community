@@ -21,7 +21,6 @@ import { LoginDBSchema, LoginSchema } from "share/types.js";
 import { Database } from "better-sqlite3";
 const { LOGIN_TABLE, TOKEN_MAX_AGE } = process.env;
 
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 router
@@ -34,12 +33,20 @@ router
             const db: Database = getLoginDB();
             const login: LoginDBSchema = await validateLogin(uname, pass);
             req.log.info(`Successful login!`);
-            const getRolesStatement = db.prepare<number, {roleID: number[]}>(`SELECT roleID FROM ${LOGIN_TABLE} WHERE id=?`);
-            const getRolesResult: {roleID: number[]} | undefined = getRolesStatement.get(login.id);
+            const getRolesStatement = db.prepare<number, { roleID: number[] }>(`
+                SELECT role.roleName
+                FROM role
+                JOIN userRole ur
+                ON role.id = ur.roleID
+                JOIN login l
+                ON l.id = ur.userID
+                WHERE l.uname = ?
+                `);
+            const getRolesResult: { roleID: number[] } | undefined =
+                getRolesStatement.get(login.id);
             if (getRolesResult === undefined) {
-                const msg = `Failed to find user: ${login.uname}`
-                console.error(msg)
-                throw new Error(msg)
+                const msg = `Failed to find roles for user: ${login.uname}`;
+                throw new Error(msg);
             }
             const roles: number[] = getRolesResult.roleID;
             const token = generateToken({
@@ -47,35 +54,42 @@ router
                 uname: login.uname,
                 roles: roles,
             });
-            const addTokenStatement = db.prepare(`UPDATE ${LOGIN_TABLE} SET token=? WHERE id=?`);
+            const addTokenStatement = db.prepare(
+                `UPDATE ${LOGIN_TABLE} SET token=? WHERE id=?`
+            );
             addTokenStatement.run(token, login.id);
-            const maxAge = (TOKEN_MAX_AGE ? +TOKEN_MAX_AGE : (10 * 24 * 60 * 60)) * 1000;
-            res.cookie('token', token, {
+            const maxAge =
+                (TOKEN_MAX_AGE ? +TOKEN_MAX_AGE : 10 * 24 * 60 * 60) * 1000;
+            res.cookie("token", token, {
                 secure: true,
                 httpOnly: true,
                 sameSite: "strict",
                 maxAge: maxAge,
             });
-            res.cookie('uname', uname, {secure: true});
+            res.cookie("uname", uname, { secure: true });
         } catch (e: unknown) {
             next(e);
         }
     })
     .post("/out", (req: Request, res: Response, next: NextFunction) => {
-
         res.status(200);
         return;
     });
 
-async function validateLogin(uname: string, pass: string): Promise<LoginDBSchema> {
+async function validateLogin(
+    uname: string,
+    pass: string
+): Promise<LoginDBSchema> {
     const loginDB: Database = getLoginDB();
-    const stmt = loginDB.prepare<string, LoginDBSchema>(`SELECT * FROM ${LOGIN_TABLE} WHERE uname=:uname`);
+    const stmt = loginDB.prepare<string, LoginDBSchema>(
+        `SELECT pass FROM ${LOGIN_TABLE} WHERE uname=?`
+    );
     const result = stmt.get(uname);
     if (!result || !bcrypt.compareSync(pass, result.pass)) {
         throw {
             status: 401,
-            message: `Incorrect username or password.`
-        } as IErrorWithStatus; 
+            message: `Incorrect username or password.`,
+        } as IErrorWithStatus;
     }
     return result;
 }
