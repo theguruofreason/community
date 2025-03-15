@@ -18,7 +18,12 @@ import { Driver } from "neo4j-driver";
 import { fileURLToPath } from "url";
 import { v4 as uuidv4 } from "uuid";
 import { IErrorWithStatus } from "errors";
-import { LoginSchema, UserInfoSchema, UserInfo } from "../share/types.js";
+import {
+    LoginSchema,
+    UserInfoSchema,
+    UserInfo,
+    LoginDBSchema,
+} from "../share/types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -60,8 +65,8 @@ async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
     }
 
     // Check if user already registered
-    const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=?`;
-    const result = loginDB.prepare<string, UserInfo>(stmt).get(userInfo.uname);
+    const stmt = `SELECT * FROM ${LOGIN_TABLE} WHERE uname=$uname`;
+    const result = loginDB.prepare<UserInfo, UserInfo>(stmt).get(userInfo);
     if (result) {
         throw {
             status: 400,
@@ -72,19 +77,43 @@ async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
     // Register user info with login DB and Neo4j DB
     const passwordHash: string = await bcrypt.hash(userInfo.pass, SALT_ROUNDS);
 
-    const sqliteStatement = loginDB.prepare(
-        `INSERT INTO ${LOGIN_TABLE} (uname, email, pass) VALUES (?, ?, ?)`
+    const insertIntoLogin = loginDB.prepare<UserInfo, LoginDBSchema>(
+        `INSERT INTO ${LOGIN_TABLE} (uname, email, pass) VALUES ($uname, $email, $pass)`
     );
-    sqliteStatement.run(userInfo.uname, userInfo.email || null, passwordHash);
-    const {pass, ...n4jUserInfo} = userInfo;
-    const userInfoParams: string[] = Object.entries(n4jUserInfo).map((keyval) => {
-        return `${keyval[0]}: $${keyval[0]}`;
+    const getInsertedUserID = loginDB.prepare<UserInfo, {id: number}>(
+        `SELECT id FROM ${LOGIN_TABLE} WHERE uname=$uname`
+    );
+    const insertRoles = loginDB.prepare<{
+        roleID: number;
+        userID: number;
+    }>(`INSERT INTO userRole (roleID, userID) VALUES ($roleID, $userID)`);
+    const sqliteTransaction = loginDB.transaction((userInfo) => {
+        insertIntoLogin.run(userInfo);
+        const userID = getInsertedUserID.get(userInfo)?.id;
+        if (userID === undefined) {
+            throw Error("Failed to get inserted userID");
+        }
+        for (const roleID of userInfo.roles) {
+            insertRoles.run({ roleID: roleID, userID: userID });
+        }
     });
+    sqliteTransaction({
+        uname: userInfo.uname,
+        email: userInfo.email || null,
+        pass: passwordHash,
+        roles: userInfo.roles,
+    });
+    const { pass, roles, ...n4jUserInfo } = userInfo;
+    const userInfoParams: string[] = Object.entries(n4jUserInfo).map(
+        (keyval) => {
+            return `${keyval[0]}: $${keyval[0]}`;
+        }
+    );
     // TODO: Move id generation to Neo4J using apoc pluggin
     userInfoParams.push("id: $id");
     await n4jDriver.executeQuery(
         `MERGE (p:Person {${userInfoParams.join(", ")}})`,
-        { ...userInfoParams, id: uuidv4() }
+        { ...userInfo, creationDateTime: userInfo.creationDateTime.toString(), id: uuidv4() }
     );
 }
 
