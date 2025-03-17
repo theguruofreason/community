@@ -1,9 +1,11 @@
 import { z } from "zod";
-const { PASSWORD_MIN_LENGTH } = process.env;
+const { PASSWORD_MIN_LENGTH, UNAME_MIN_LENGTH } = process.env;
 
 export const UserInfoSchema = z.object({
-    uname: z.string().nonempty(),
-    email: z.string().email().optional(),
+    uname: z.string().nonempty().min(+UNAME_MIN_LENGTH),
+    email: z.preprocess((email) => {
+        if (email ==="") email = undefined;
+    } , z.string().email().optional()),
     pass: z.string().min(+PASSWORD_MIN_LENGTH),
     name: z.string().nonempty(),
     description: z.string().optional(),

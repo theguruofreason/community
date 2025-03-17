@@ -30,7 +30,7 @@ const {
 const app: Express = express();
 const port = +(PORT ?? 3000);
 const corsOptions = {
-    origin: ORIGIN,
+    origin: 'localhost:5173',
 };
 
 // Initialize LoginDB
@@ -51,7 +51,7 @@ if (!(await localNeo4JDriver.establishConnection(neo4jMaxRetries))) {
 // Middleware
 app.use(logger());
 app.use(Neo4jMiddleware(localNeo4JDriver));
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -69,6 +69,10 @@ declare global {
              * The required minimum length of a password for a new registered user
              */
             PASSWORD_MIN_LENGTH: string;
+            /**
+             * The required minimun length of a username for a new registered user
+             */
+            UNAME_MIN_LENGTH: string;
         }
     }
     namespace Express {
