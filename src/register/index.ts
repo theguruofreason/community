@@ -80,7 +80,7 @@ async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
     const insertIntoLogin = loginDB.prepare<UserInfo, LoginDBSchema>(
         `INSERT INTO ${LOGIN_TABLE} (uname, email, pass) VALUES ($uname, $email, $pass)`
     );
-    const getInsertedUserID = loginDB.prepare<UserInfo, {id: number}>(
+    const getInsertedUserID = loginDB.prepare<UserInfo, { id: number }>(
         `SELECT id FROM ${LOGIN_TABLE} WHERE uname=$uname`
     );
     const insertRoles = loginDB.prepare<{
@@ -104,16 +104,20 @@ async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
         roles: userInfo.roles,
     });
     const { pass, roles, ...n4jUserInfo } = userInfo;
-    const userInfoParams: string[] = Object.entries(n4jUserInfo).map(
-        (keyval) => {
+    const userInfoParams: string[] = Object.entries(n4jUserInfo)
+        .filter((keyval) => keyval[1])
+        .map((keyval) => {
             return `${keyval[0]}: $${keyval[0]}`;
-        }
-    );
+        });
     // TODO: Move id generation to Neo4J using apoc pluggin
     userInfoParams.push("id: $id");
     await n4jDriver.executeQuery(
         `MERGE (p:Person {${userInfoParams.join(", ")}})`,
-        { ...userInfo, creationDateTime: userInfo.creationDateTime.toString(), id: uuidv4() }
+        {
+            ...userInfo,
+            creationDateTime: userInfo.creationDateTime.toString(),
+            id: uuidv4(),
+        }
     );
 }
 

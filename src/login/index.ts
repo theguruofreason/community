@@ -33,7 +33,7 @@ router
             const db: Database = getLoginDB();
             const login: LoginDBSchema = await validateLogin(uname, pass);
             req.log.info(`Successful login!`);
-            const getRolesStatement = db.prepare<number, { roleID: number[] }>(`
+            const getRolesStatement = db.prepare<string, { roleName: string }>(`
                 SELECT role.roleName
                 FROM role
                 JOIN userRole ur
@@ -42,13 +42,13 @@ router
                 ON l.id = ur.userID
                 WHERE l.uname = ?
                 `);
-            const getRolesResult: { roleID: number[] } | undefined =
-                getRolesStatement.get(login.id);
+            const getRolesResult: { roleName: string }[] | undefined =
+                getRolesStatement.all(uname);
             if (getRolesResult === undefined) {
-                const msg = `Failed to find roles for user: ${login.uname}`;
+                const msg = `Failed to find roles for user: ${uname}`;
                 throw new Error(msg);
             }
-            const roles: number[] = getRolesResult.roleID;
+            const roles: string[] = getRolesResult.map(result => result.roleName);
             const token = generateToken({
                 id: login.id,
                 uname: login.uname,
@@ -67,6 +67,7 @@ router
                 maxAge: maxAge,
             });
             res.cookie("uname", uname, { secure: true });
+            res.send();
         } catch (e: unknown) {
             next(e);
         }
