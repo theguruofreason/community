@@ -37,5 +37,5 @@ export type LoginDBSchema = {
 export type TokenData = {
     id: number;
     uname: string;
-    roles: string[];
+    roles: number[];
 };

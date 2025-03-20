@@ -33,22 +33,20 @@ router
             const db: Database = getLoginDB();
             const login: LoginDBSchema = await validateLogin(uname, pass);
             req.log.info(`Successful login!`);
-            const getRolesStatement = db.prepare<string, { roleName: string }>(`
-                SELECT role.roleName
-                FROM role
-                JOIN userRole ur
-                ON role.id = ur.roleID
+            const getRolesStatement = db.prepare<string, { roleID: number }>(`
+                SELECT ur.roleID
+                FROM userRole ur
                 JOIN login l
                 ON l.id = ur.userID
                 WHERE l.uname = ?
                 `);
-            const getRolesResult: { roleName: string }[] | undefined =
+            const getRolesResult: { roleID: number }[] | undefined =
                 getRolesStatement.all(uname);
             if (getRolesResult === undefined) {
                 const msg = `Failed to find roles for user: ${uname}`;
                 throw new Error(msg);
             }
-            const roles: string[] = getRolesResult.map(result => result.roleName);
+            const roles: number[] = getRolesResult.map(result => result.roleID);
             const token = generateToken({
                 id: login.id,
                 uname: login.uname,
