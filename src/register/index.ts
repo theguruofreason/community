@@ -70,7 +70,7 @@ async function register(userInfo: UserInfo, n4jDriver: Driver): Promise<void> {
     if (result) {
         throw {
             status: 400,
-            message: `uname ${userInfo.uname} already registered.`,
+            message: `username ${userInfo.uname} already registered.`,
         } as IErrorWithStatus;
     }
 
