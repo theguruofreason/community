@@ -15,9 +15,9 @@ import { getLoginDB } from "db";
 import bcrypt from "bcrypt";
 export const router = Router();
 import { fileURLToPath } from "url";
-import { generateToken } from "auth";
+import { generateToken, getTokenFromRequestCookies } from "auth";
 import { IErrorWithStatus } from "errors";
-import { LoginDBSchema, LoginSchema } from "share/types.js";
+import { LoginDBSchema, LoginSchema, LogoutSchema } from "share/types.js";
 import { Database } from "better-sqlite3";
 const { LOGIN_TABLE, TOKEN_MAX_AGE } = process.env;
 
@@ -55,7 +55,11 @@ router
             const addTokenStatement = db.prepare(
                 `UPDATE ${LOGIN_TABLE} SET token=? WHERE id=?`
             );
-            addTokenStatement.run(token, login.id);
+            const addTokenResult = addTokenStatement.run(token, login.id);
+            if (addTokenResult.changes == 0) {
+                console.error(`Failed to add token to login DB for ${uname}`);
+                throw new Error("Login failure.");
+            }
             const maxAge =
                 (TOKEN_MAX_AGE ? +TOKEN_MAX_AGE : 10 * 24 * 60 * 60) * 1000;
             res.cookie("token", token, {
@@ -70,9 +74,30 @@ router
             next(e);
         }
     })
-    .post("/out", (req: Request, res: Response, next: NextFunction) => {
-        res.status(200);
-        return;
+    .post("/out", async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const {uname} = LogoutSchema.parse(req.body);
+            const token = getTokenFromRequestCookies(req);
+            if (!token) {
+                console.error(`Bad token on logout for user: ${uname}`);
+                throw {status: 400, message: "No token"} as IErrorWithStatus;
+            }
+            const loginDB = getLoginDB();
+            const deleteTokenStatement = loginDB.prepare<{uname: string, token: string}>(`UPDATE ${LOGIN_TABLE} SET token=NULL WHERE uname=$uname AND token=$token`);
+            const deleteTokenResult = deleteTokenStatement.run({
+                uname,
+                token
+            });
+            if (deleteTokenResult.changes < 1) {
+                console.error(`Failed to remove token from DB for user: ${uname}`);
+                throw new Error("Failed to end session.");
+            }
+        } catch (e: unknown) {
+            console.error(e);
+            res.sendStatus(500);
+            return;
+        }
+        res.sendStatus(200);
     });
 
 async function validateLogin(
@@ -81,7 +106,7 @@ async function validateLogin(
 ): Promise<LoginDBSchema> {
     const loginDB: Database = getLoginDB();
     const stmt = loginDB.prepare<string, LoginDBSchema>(
-        `SELECT pass FROM ${LOGIN_TABLE} WHERE uname=?`
+        `SELECT * FROM ${LOGIN_TABLE} WHERE uname=?`
     );
     const result = stmt.get(uname);
     if (!result || !bcrypt.compareSync(pass, result.pass)) {

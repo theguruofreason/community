@@ -35,7 +35,7 @@ if (RUNTIME_ENVIRONMENT.toLowerCase() == "dev") {
         res.type("html");
         res.end(ruruHTML({ endpoint: "/graphql" }));
     });
-    if (["prod", "test"].includes(RUNTIME_ENVIRONMENT.toLocaleLowerCase()))
-        router.use("/graphql", requireValidToken);
 }
+// if (["prod", "test"].includes(RUNTIME_ENVIRONMENT.toLocaleLowerCase()))
+    router.use("/graphql", requireValidToken);
 router.all("/graphql", graphQueryHandler);

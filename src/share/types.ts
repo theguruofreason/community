@@ -4,8 +4,8 @@ const { PASSWORD_MIN_LENGTH, UNAME_MIN_LENGTH } = process.env;
 export const UserInfoSchema = z.object({
     uname: z.string().nonempty().min(+UNAME_MIN_LENGTH),
     email: z.preprocess((email) => {
-        if (email ==="") email = undefined;
-    } , z.string().email().optional()),
+        if (email === "") email = undefined;
+    }, z.string().email().optional()),
     pass: z.string().min(+PASSWORD_MIN_LENGTH),
     name: z.string().nonempty(),
     description: z.string().optional(),
@@ -26,6 +26,12 @@ export const LoginSchema = z.object({
 });
 
 export type Login = z.infer<typeof LoginSchema>;
+
+export const LogoutSchema = z.object({
+    uname: z.string().nonempty(),
+});
+
+export type Logout = z.infer<typeof LogoutSchema>;
 
 export type LoginDBSchema = {
     id: number;

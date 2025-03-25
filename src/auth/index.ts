@@ -84,7 +84,7 @@ export async function requireValidToken(
     next();
 }
 
-function getTokenFromRequestCookies(req: Request): string | null {
+export function getTokenFromRequestCookies(req: Request): string | null {
     const cookieString = req.headers?.cookie;
     if (!cookieString) return null;
     const cookies = parseCookies(cookieString);
