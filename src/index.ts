@@ -14,7 +14,7 @@ import { LoginDB } from "db";
 import { router } from "routes";
 import cors from "cors";
 import express, { Express } from "express";
-import { pino } from "pino";
+import pino from "pino";
 import { ErrorHandler } from "errors";
 import { pinoHttp as logger } from "pino-http";
 const log = pino();

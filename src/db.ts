@@ -13,7 +13,7 @@ import Sqlite3 from 'better-sqlite3';
 import neo4j, { Driver, ServerInfo, Session } from "neo4j-driver";
 import { NextFunction, Request, Response } from "express";
 const { LOGIN_DB_URI } = process.env;
-import { pino } from "pino";
+import pino from "pino";
 const log = pino();
 
 export class LoginDB {
